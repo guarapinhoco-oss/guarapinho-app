@@ -1,0 +1,26 @@
+{
+  "name": "Guarapinho",
+  "short_name": "Guarapinho",
+  "description": "Ventas, caja y administración de Guarapinho",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "lang": "es-CO",
+  "background_color": "#146b2b",
+  "theme_color": "#146b2b",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
