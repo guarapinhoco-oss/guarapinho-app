@@ -1759,9 +1759,9 @@
   // ---------- Precios y costos ----------
   function vPrecios() {
     var p = AD.productos;
-    $('vista').innerHTML = '<p class="gris peq">Hoja "Precios y Costos". El costo unitario incluye insumos y gasolina proporcional por vaso. Los cambios se ven de inmediato en la caja y en todos los cálculos del archivo.</p>' +
+    $('vista').innerHTML = '<p class="gris peq">Hoja "Precios y Costos". Los cambios de precio se ven de inmediato en la caja y en todos los cálculos del archivo. Los costos en gris se calculan solos en la hoja "Recetas y Costeo" (precio de cada insumo y receta de cada producto): se cambian allá.</p>' +
       '<div class="tabla-scroll"><table><thead><tr><th>Producto</th><th class="n">Precio de venta</th><th class="n">Costo unitario</th><th class="n">Margen</th><th class="n">% Margen</th></tr></thead><tbody>' + p.map(function (x, i) {
-        return '<tr><td><b>' + esc(x.nombre) + '</b></td><td class="n"><input data-pr="' + i + '" value="' + x.precio + '" style="width:110px;text-align:right"></td><td class="n"><input data-co="' + i + '" value="' + x.costo + '" style="width:110px;text-align:right"></td><td class="n" id="mg' + i + '"></td><td class="n" id="mp' + i + '"></td></tr>';
+        return '<tr><td><b>' + esc(x.nombre) + '</b></td><td class="n"><input data-pr="' + i + '" value="' + x.precio + '" style="width:110px;text-align:right"></td><td class="n"><input data-co="' + i + '" value="' + x.costo + '" style="width:110px;text-align:right"' + (x.costoAuto ? ' disabled title="Se calcula en la hoja Recetas y Costeo"' : '') + '></td><td class="n" id="mg' + i + '"></td><td class="n" id="mp' + i + '"></td></tr>';
       }).join('') + '</tbody></table></div><div class="acciones" style="display:flex;justify-content:flex-end;margin-top:14px"><button id="pGuardar">Guardar precios y costos</button></div>';
     var calc = function () { p.forEach(function (x, i) { var pr = numeroDe($$('[data-pr="' + i + '"]')[0].value), co = numeroDe($$('[data-co="' + i + '"]')[0].value); $('mg' + i).textContent = pesos(pr - co); $('mp' + i).textContent = pr ? pct((pr - co) / pr) : ''; }); };
     $$('[data-pr],[data-co]').forEach(function (i) { campoPesos(i); i.addEventListener('input', calc); });
