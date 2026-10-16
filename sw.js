@@ -1,10 +1,10 @@
-// Guarda la pantalla en el celular para que la app abra sin internet. Versión 3d1cffd374.
-const CACHE = 'guarapinho-3d1cffd374';
+// Guarda la pantalla en el celular para que la app abra sin internet. Versión e018fe43f3.
+const CACHE = 'guarapinho-e018fe43f3';
 const FUENTES = 'fuentes-guarapinho';
 const ARCHIVOS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.indexOf('guarapinho-') === 0 && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
@@ -15,15 +15,11 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   if (url.origin === location.origin) {
     if (req.mode === 'navigate') {
-      // Con señal trae la versión nueva; si no responde en 4 segundos o no hay señal, abre la guardada.
-      const red = fetch(req).then(r => { if (r.ok) { const c = r.clone(); caches.open(CACHE).then(x => x.put('./index.html', c)); } return r; });
-      const guardada = () => caches.match('./index.html', { ignoreSearch: true });
-      e.respondWith(new Promise(ok => {
-        let listo = false;
-        const t = setTimeout(() => guardada().then(r => { if (r && !listo) { listo = true; ok(r); } }), 4000);
-        red.then(r => { if (!listo) { listo = true; clearTimeout(t); ok(r); } })
-          .catch(() => guardada().then(r => { if (!listo) { listo = true; clearTimeout(t); ok(r || Response.error()); } }));
-      }));
+      // Abre al instante con la pantalla guardada en el celular y en segundo plano trae la versión nueva para la próxima vez.
+      // Si todavía no hay nada guardado (primera vez), la trae de internet.
+      const red = fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(r => { if (r.ok) { const c = r.clone(); caches.open(CACHE).then(x => x.put('./index.html', c)); } return r; });
+      e.waitUntil(red.catch(() => {}));
+      e.respondWith(caches.match('./index.html', { ignoreSearch: true }).then(g => g || red));
       return;
     }
     e.respondWith(caches.match(req, { ignoreSearch: true }).then(r => r || fetch(req)));

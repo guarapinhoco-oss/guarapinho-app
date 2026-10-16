@@ -2,6 +2,18 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://script.google.com https://script.googleusercontent.com https://fonts.googleapis.com https://fonts.gstatic.com; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="Caja y administración de Guarapinho. Uso interno con usuario y PIN.">
+<meta name="robots" content="noindex, nofollow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Guarapinho · Caja">
+<meta property="og:description" content="App de ventas y caja de Guarapinho. Ingreso con usuario y PIN.">
+<meta property="og:url" content="https://guarapinhoco-oss.github.io/guarapinho-app/">
+<meta property="og:image" content="https://guarapinhoco-oss.github.io/guarapinho-app/icon-512.png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+<meta property="og:locale" content="es_CO">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -12,6 +24,8 @@
 <script>
   // App instalable: el servidor es el mismo Apps Script, llamado por internet. Sin señal la pantalla abre desde el celular.
   (function () {
+    // La app no se deja mostrar dentro de otra página (evita que alguien la disfrace para capturar el PIN).
+    if (window.top !== window.self) { document.documentElement.style.display = 'none'; try { window.top.location.replace(location.href); } catch (e) {} return; }
     var URL_API = "https://script.google.com/macros/s/AKfycbz2o_Yl2lb3Mouax-RpuOVMvYB5GpMa8VtGVOx7MlEkAjl5WcJ7qyX1YBpq7AjB0PiODg/exec";
     function llamarApi(fn, args, ok, fallo) {
       var ctl = window.AbortController ? new AbortController() : null;
@@ -33,7 +47,12 @@
       } });
     }
     window.google = { script: { run: run(null, null) } };
-    if ('serviceWorker' in navigator) window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+      // Llegó una versión nueva de la pantalla: si nadie ha entrado se aplica ya; si hay sesión, al volver a abrir la app.
+      var habia = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.addEventListener('controllerchange', function () { if (habia && typeof SES !== 'undefined' && !SES) location.reload(); });
+    }
   })();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -624,7 +643,8 @@
       if (!SES) return;
       var d = {}, x = leerLocal('gp_datos_' + SES.usuario);
       if (x && x.v === 2 && x.d) d = x.d; // lo de otras pantallas que no se ha vuelto a pedir se conserva
-      Object.keys(GUARDADO).forEach(function (k) { if (GUARDADO[k].listo && GUARDADO[k].t) d[k] = { data: GUARDADO[k].data, t: GUARDADO[k].t }; });
+      // La lista de usuarios (nombres y celulares) no se guarda en el celular.
+      Object.keys(GUARDADO).forEach(function (k) { if (GUARDADO[k].listo && GUARDADO[k].t && k.indexOf('adminUsuarios') !== 0) d[k] = { data: GUARDADO[k].data, t: GUARDADO[k].t }; });
       guardarLocal('gp_datos_' + SES.usuario, { v: 2, d: d });
     }, 800);
   }
@@ -832,6 +852,8 @@
   // ================= Sesión =================
   function cerrarSesion(vencida) {
     if (SES && !vencida) api('logout').catch(function () {});
+    // La cola de movimientos sin enviar se conserva; lo demás de esta persona se borra del celular.
+    if (SES) { borrarLocal('gp_op_' + SES.usuario); borrarLocal('gp_carrito'); }
     olvidarGuardado(); SES = null; borrarLocal('gp_sesion'); borrarLocal('gp_vista');
     location.hash = '';
     document.body.className = '';
@@ -857,7 +879,20 @@
       ULTIMO_TOQUE = { b: $('btnIngresar'), t: Date.now() };
       var disp = leerLocal('gp_disp');
       if (!disp) { disp = idNuevo('D') + '-' + Math.random().toString(36).slice(2, 12).toUpperCase(); guardarLocal('gp_disp', disp); }
-      api('login', usuario, pin, disp).then(function (s) { guardarLocal('gp_usuario', usuario); entrar(s); })
+      api('login', usuario, pin, disp, leerLocal('gp_vista') === 'caja' ? 'op' : 'panel').then(function (s) {
+        var d = s.datos || {}; delete s.datos;
+        guardarLocal('gp_usuario', usuario);
+        s.ini = Date.now();
+        // La primera pantalla llega con el ingreso: queda lista sin otra llamada al servidor.
+        var k = function (fn) { return fn + '[]'; };
+        if (d.adminInit) GUARDADO[k('adminInit')] = { listo: true, data: d.adminInit, t: Date.now() };
+        if (d.adminInicio) GUARDADO[k('adminInicio')] = { listo: true, data: d.adminInicio, t: Date.now() };
+        if (d.opInit) {
+          var o = d.opInit;
+          guardarLocal('gp_op_' + s.usuario, { productos: o.productos, canales: o.canales, categorias: o.categoriasCaja, srv: { turno: o.turno || null, ventas: o.ventas || [], gastos: o.gastos || [] }, t: Date.now(), fresco: true });
+        }
+        entrar(s);
+      })
         .catch(function (e) { $('lError').textContent = e.message; $('lPin').value = ''; vibrar(80); });
     };
     $('btnIngresar').onclick = ir;
@@ -870,6 +905,9 @@
     iniciarLogin();
     var s = leerLocal('gp_sesion');
     if (!s || !s.token) return;
+    // El panel tiene datos del negocio: pasado el tope de la sesión (12 horas) pide PIN otra vez, aunque no haya señal.
+    // La caja sí sigue abriendo sin señal para no perder ventas; el servidor igual exige ingresar de nuevo.
+    if (s.rol !== 'OPERADOR' && !(s.ini && Date.now() - s.ini < 12 * 3600e3)) { borrarLocal('gp_sesion'); borrarLocal('gp_datos_' + s.usuario); return; }
     // Entra de una vez con la sesión guardada (sin esperar al servidor); la validación corre al mismo tiempo.
     // Si la sesión venció o el rol cambió, se corrige apenas responde. Cada llamada del panel también valida la sesión.
     // Se difiere un instante para que todos los bloques <script> de la página ya estén definidos.
@@ -918,6 +956,7 @@
       OP.srv = g.srv || { turno: null, ventas: [], gastos: [] };
       derivar(); pintarEstadoCaja(); opIr('vender');
     }
+    if (g && g.fresco) { g.fresco = false; guardarLocal(opKey(), g); enviarCola(); return; } // recién traído con el ingreso
     api('opInit').then(function (r) {
       var antes = JSON.stringify([OP.productos, OP.turno, OP.ventas, OP.gastos]);
       OP.productos = r.productos; OP.canales = r.canales; OP.categorias = r.categoriasCaja;
