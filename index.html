@@ -162,6 +162,9 @@
   .tamano.t1 svg { height: 26px; } .tamano.t3 svg { height: 42px; }
   .tamano b { font-size: 15px; } .tamano span { font-size: 15px; font-weight: 900; color: var(--verde-osc); }
   .opciones { display: flex; gap: 8px; flex-wrap: wrap; }
+  #mAdic { display: grid; gap: 8px; }
+  #mAdic .adic { justify-content: space-between; align-items: center; gap: 12px; }
+  #mAdic .adic b { color: var(--verde-osc); }
   .opciones button { background: #fff; color: var(--texto); border: 2px solid var(--borde); border-radius: 99px; padding: 7px 14px; }
   .opciones button.sel { border-color: var(--verde); background: var(--verde-claro); color: var(--verde-osc); }
   .stepper { display: inline-flex; align-items: center; border: 2px solid var(--borde); border-radius: 12px; overflow: hidden; }
@@ -1014,7 +1017,7 @@
   function lineas() {
     var orden = [], m = {};
     OP.productos.forEach(function (p) {
-      if (!m[p.linea]) { m[p.linea] = { linea: p.linea, grupo: p.grupo, desc: p.desc, img: p.img, color: p.color, mas18: p.mas18, opciones: p.opciones, orden: p.orden || 99, destacado: p.destacado || '', variantes: [] }; orden.push(m[p.linea]); }
+      if (!m[p.linea]) { m[p.linea] = { linea: p.linea, grupo: p.grupo, desc: p.desc, img: p.img, color: p.color, mas18: p.mas18 && !p.adicion, opciones: p.opciones, orden: p.orden || 99, destacado: p.destacado || '', variantes: [] }; orden.push(m[p.linea]); }
       m[p.linea].variantes.push(p);
     });
     return orden.sort(function (a, b) { return a.orden - b.orden; });
@@ -1035,23 +1038,38 @@
 
   function buscarProducto(nombre) { return OP.productos.filter(function (p) { return p.nombre === nombre; })[0]; }
 
+  function adiciones() { return OP.productos.filter(function (p) { return p.adicion; }); }
+
   function elegirTamano(linea) {
     var l = lineas().filter(function (x) { return x.linea === linea; })[0];
-    var st = { cant: 1, opcion: l.opciones.length ? l.opciones[0] : '' };
+    var esAdic = l.variantes.every(function (v) { return v.adicion; });
+    var st = { cant: 1, opcion: l.opciones.length ? l.opciones[0] : '', adic: {} };
     var orden = ['Pequeño', 'Mediano', 'Grande'];
     var vars = l.variantes.slice().sort(function (a, b) { return orden.indexOf(a.tamano) - orden.indexOf(b.tamano); });
+    var extras = esAdic ? [] : adiciones();
     var m = modal(l.grupo,
       '<p class="gris" style="margin-top:0">' + esc(l.desc) + '</p>' +
       (l.opciones.length ? '<label>Borde</label><div class="opciones" id="mOpc">' + l.opciones.map(function (o) { return '<button data-o="' + esc(o) + '" class="' + (o === st.opcion ? 'sel' : '') + '">' + esc(o) + '</button>'; }).join('') + '</div>' : '') +
-      '<div class="fila" style="margin-top:12px"><label style="margin:0">Cantidad</label><div class="auto stepper"><button data-d="-1">−</button><span id="mCant">1</span><button data-d="1">+</button></div></div>' +
-      '<label style="margin-top:14px">Toque el tamaño para agregarlo</label><div class="tamanos">' + vars.map(function (v) {
-        return '<button class="tamano t' + (orden.indexOf(v.tamano) + 1) + '" data-p="' + esc(v.nombre) + '">' + ICON.vaso + '<b>' + esc(v.tamano || v.nombre) + '</b><span>' + pesos(v.precio) + '</span></button>';
+      '<div class="fila" style="margin-top:12px"><label style="margin:0">Cantidad</label><div class="auto stepper" id="mPaso"><button data-d="-1">−</button><span id="mCant">1</span><button data-d="1">+</button></div></div>' +
+      (extras.length ? '<label style="margin-top:14px">Adiciones (se cobran aparte)</label><div id="mAdic">' + extras.map(function (a, i) {
+        return '<div class="fila adic"><span>' + esc(a.etiqueta) + ' <b class="num">+' + pesos(a.precio) + '</b></span><div class="auto stepper"><button data-a="' + i + '" data-d="-1">−</button><span id="mA' + i + '">0</span><button data-a="' + i + '" data-d="1">+</button></div></div>';
+      }).join('') + '</div>' : '') +
+      '<label style="margin-top:14px">' + (esAdic ? 'Toque la adición para agregarla' : 'Toque el tamaño para agregarlo') + '</label><div class="tamanos">' + vars.map(function (v) {
+        return '<button class="tamano t' + (orden.indexOf(v.tamano) + 1) + '" data-p="' + esc(v.nombre) + '">' + ICON.vaso + '<b>' + esc(v.tamano || v.etiqueta || v.nombre) + '</b><span>' + pesos(v.precio) + '</span></button>';
       }).join('') + '</div>');
     $$('#mOpc button', m).forEach(function (b) { b.onclick = function () { st.opcion = b.getAttribute('data-o'); $$('#mOpc button', m).forEach(function (x) { x.classList.toggle('sel', x === b); }); }; });
-    $$('.stepper button', m).forEach(function (b) { b.onclick = function () { st.cant = Math.max(1, Math.min(50, st.cant + Number(b.getAttribute('data-d')))); m.querySelector('#mCant').textContent = st.cant; }; });
+    $$('#mPaso button', m).forEach(function (b) { b.onclick = function () { st.cant = Math.max(1, Math.min(50, st.cant + Number(b.getAttribute('data-d')))); m.querySelector('#mCant').textContent = st.cant; }; });
+    $$('#mAdic button', m).forEach(function (b) {
+      b.onclick = function () {
+        var i = b.getAttribute('data-a');
+        st.adic[i] = Math.max(0, Math.min(50, (st.adic[i] || 0) + Number(b.getAttribute('data-d'))));
+        m.querySelector('#mA' + i).textContent = st.adic[i];
+      };
+    });
     $$('.tamano', m).forEach(function (b) {
       b.onclick = function () {
         agregarAlCarrito(b.getAttribute('data-p'), st.cant, st.opcion);
+        extras.forEach(function (a, i) { if (st.adic[i]) agregarAlCarrito(a.nombre, st.adic[i], ''); });
         vibrar(15); m.cerrar();
       };
     });
@@ -1066,7 +1084,7 @@
   }
 
   function totalCarrito() { return OP.carrito.reduce(function (a, it) { var p = buscarProducto(it.producto); return a + (p ? p.precio * it.cantidad : 0); }, 0); }
-  function vasosCarrito() { return OP.carrito.reduce(function (a, it) { return a + it.cantidad; }, 0); }
+  function vasosCarrito() { return OP.carrito.reduce(function (a, it) { var p = buscarProducto(it.producto); return a + (p && p.adicion ? 0 : it.cantidad); }, 0); }
 
   function pintarCarrito() {
     var c = $('carrito'); if (!c) return;
