@@ -1663,7 +1663,7 @@
         return '<tr class="clic" data-t="' + esc(t.id) + '"><td>' + fechaCorta(t.fecha) + '<div class="gris peq">' + esc(t.id) + '</div></td><td>' + esc(t.abre) + '<div class="gris peq">' + esc(String(t.apertura).slice(11)) + (t.cierre ? '–' + esc(String(t.cierre).slice(11)) : '') + '</div></td>' +
           '<td class="n">' + t.ventasN + '<div class="gris peq">' + t.vasos + ' vasos</div></td><td class="n">' + pesos(t.total) + '</td><td class="n">' + pesos(t.esperado) + '</td><td class="n">' + (t.contado === null ? '—' : pesos(t.contado)) + '</td>' +
           '<td class="n ' + (t.estado === 'ABIERTO' ? '' : t.diferencia < 0 ? 'neg' : t.diferencia > 0 ? 'pos' : '') + '">' + (t.estado === 'ABIERTO' ? '—' : pesos(t.diferencia)) + '</td>' +
-          '<td>' + chipTurno(t.estado) + (t.obs ? '<div class="peq" style="margin-top:4px;max-width:220px;white-space:normal"><b>Obs:</b> ' + esc(t.obs) + '</div>' : '') + '</td></tr>';
+          '<td>' + chipTurno(t.estado) + '</td></tr>';
       }).join('') + '</tbody></table></div>' : '<div class="vacio">No hay cajas con ese filtro.</div>';
       $$('[data-t]').forEach(function (tr) { tr.onclick = function () { detalleTurno(tr.getAttribute('data-t')); }; });
     }).catch(fallaVista);
@@ -1675,11 +1675,10 @@
     api('adminTurno', id).then(function (r) {
       var t = r.turno;
       m.querySelector('.cuerpo').innerHTML = '<div class="kpis">' + kpi('Vendido', pesos(t.total), t.ventasN + ' ventas · ' + t.vasos + ' vasos') + kpi('Base', pesos(t.base)) + kpi('Efectivo esperado', pesos(t.esperado), 'Base + efectivo' + (t.propinasEfectivo ? ' + propinas ' + pesos(t.propinasEfectivo) : '') + ' − gastos ' + pesos(t.gastos)) +
-        kpi('Contado', t.contado === null ? '—' : pesos(t.contado), t.cierra ? 'Cerró ' + esc(t.cierra) : '') + kpi('Diferencia', t.estado === 'ABIERTO' ? '—' : pesos(t.diferencia), '', t.diferencia < 0 ? 'negativo' : '') + kpi('Transferencias', pesos(t.transferencia)) + kpi('Propinas', pesos(t.propinas || 0), 'Efectivo ' + pesos(t.propinasEfectivo || 0) + ' · Transf. ' + pesos(t.propinasTransferencia || 0)) + '</div>' +
-        (t.obs ? '<div class="tarjeta" style="margin:12px 0"><h3 style="margin:0 0 4px">Observaciones del cierre</h3><p style="margin:0">' + esc(t.obs) + '</p><div class="gris peq">' + esc(t.cierra || '') + '</div></div>' : '') +
+        kpi('Contado', t.contado === null ? '—' : pesos(t.contado), t.cierra ? 'Cerró ' + esc(t.cierra) : '') + kpi('Diferencia', t.estado === 'ABIERTO' ? '—' : pesos(t.diferencia), t.obs ? esc(t.obs) : '', t.diferencia < 0 ? 'negativo' : '') + kpi('Transferencias', pesos(t.transferencia)) + kpi('Propinas', pesos(t.propinas || 0), 'Efectivo ' + pesos(t.propinasEfectivo || 0) + ' · Transf. ' + pesos(t.propinasTransferencia || 0)) + '</div>' +
         (t.revisadoPor ? '<p class="gris">Revisada por ' + esc(t.revisadoPor) + ' el ' + esc(t.fechaRevision) + '.</p>' : '') +
         '<h3>Ventas (' + r.ventas.length + ')</h3><div class="tabla-scroll" style="max-height:300px"><table><tbody>' + r.ventas.map(function (v) {
-          return '<tr class="' + (v.estado !== 'ACTIVA' ? 'anulada' : '') + '"><td>' + esc(v.hora) + '</td><td>' + esc(v.detalle) + (v.nota ? '<div class="gris peq">Nota: ' + esc(v.nota) + '</div>' : '') + '</td><td>' + esc(v.vendedor) + '</td><td>' + (v.medio === 'EFECTIVO' ? 'Efectivo' : esc(v.canal || 'Transf.')) + '</td><td class="n">' + pesos(v.total) + (v.propina ? '<div class="gris peq">+ propina ' + pesos(v.propina) + '</div>' : '') + '</td></tr>';
+          return '<tr class="' + (v.estado !== 'ACTIVA' ? 'anulada' : '') + '"><td>' + esc(v.hora) + '</td><td>' + esc(v.detalle) + '</td><td>' + esc(v.vendedor) + '</td><td>' + (v.medio === 'EFECTIVO' ? 'Efectivo' : esc(v.canal || 'Transf.')) + '</td><td class="n">' + pesos(v.total) + (v.propina ? '<div class="gris peq">+ propina ' + pesos(v.propina) + '</div>' : '') + '</td></tr>';
         }).join('') + '</tbody></table></div>' +
         (r.gastos.length ? '<h3>Gastos de caja</h3><div class="tabla-scroll"><table><tbody>' + r.gastos.map(function (g) {
           return '<tr class="' + (g.estado !== 'ACTIVO' ? 'anulada' : '') + '"><td>' + esc(g.hora) + '</td><td>' + esc(g.categoria) + '</td><td>' + esc(g.descripcion) + '</td><td>' + esc(g.usuario) + '</td><td class="n">' + pesos(g.valor) + '</td></tr>';
