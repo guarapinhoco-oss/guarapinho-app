@@ -1588,7 +1588,15 @@
       var d = r.dia || { vasos: 0, ingreso: 0, efectivo: 0, transferencia: 0, margen: 0 };
       var m = r.mes || {};
       var eq = r.equilibrio || {};
-      var avance = eq.vasosDia ? Math.min(100, r.promedioVasosDia / eq.vasosDia * 100) : 0;
+      // La barra mide solo lo vendido hoy: arranca en cero cada día.
+      // Meta de hoy = lo que falta para la meta del mes, repartido entre los días que quedan (hoy incluido).
+      // Lo que faltó en días anteriores sube un poco la meta de cada día restante; lo que sobró la baja.
+      var vHoy = (d && d.vasos) || 0, base = eq.vasosDia || 0;
+      var diasAntes = Math.max(0, (r.diasTrabajados || 0) - (vHoy > 0 ? 1 : 0)), vasosAntes = Math.max(0, ((r.mes && r.mes.vasos) || 0) - vHoy);
+      var pHoy = r.hoy.split('-').map(Number), ultimoDia = new Date(Date.UTC(pHoy[0], pHoy[1], 0)).getUTCDate(), diasQuedan = ultimoDia - pHoy[2] + 1;
+      var metaMes = Math.round(base * (diasAntes + diasQuedan));
+      var meta = base ? Math.max(0, Math.ceil((metaMes - vasosAntes) / diasQuedan)) : 0, arrastre = meta - Math.round(base);
+      var avance = meta ? Math.min(100, vHoy / meta * 100) : 0;
       var horas = Object.keys(r.porHora).sort().map(function (h) { return { h: h, v: r.porHora[h], corto: r.porHora[h] }; });
       cuenta('cajas', r.alertas.filter(function (a) { return a.tipo === 'cierre' || a.tipo === 'turno'; }).length);
       $('vista').innerHTML =
@@ -1606,8 +1614,10 @@
         kpi('Caja acumulada', pesos(m.cajaAcumulada), 'Flujo de Caja', m.cajaAcumulada < 0 ? 'negativo' : '') + '</div></div>' +
         '</div><div>' +
         '<div class="tarjeta"><h2>Punto de equilibrio</h2><p class="gris peq" style="margin-top:-6px">' + (r.equilibrioConPrestamo ? 'Incluye costos fijos y el pago completo del préstamo de Miguel' + (r.primerCuotaMes && r.primerCuotaMes > r.hoy.slice(0, 7) ? ' (se paga en ' + nombreMes(r.primerCuotaMes) + ')' : '') + '.' : 'Costos fijos promedio, sin préstamo.') + '</p>' +
-        '<div class="fila"><div><div class="gris peq">Vasos/día necesarios</div><b style="font-size:24px">' + Math.round(eq.vasosDia || 0) + '</b></div><div><div class="gris peq">Promedio real' + (r.diasTrabajados ? ' (' + r.diasTrabajados + ' día' + (r.diasTrabajados === 1 ? '' : 's') + ')' : '') + '</div><b style="font-size:24px">' + Math.round(r.promedioVasosDia) + '</b></div></div>' +
-        '<div class="progreso ' + (avance < 100 ? 'bajo' : '') + '"><i style="width:' + avance + '%"></i></div><div class="gris peq">' + (eq.vasosDia ? Math.round(avance) + '% de la meta diaria' : 'Se calcula cuando haya gastos fijos registrados.') + '</div></div>' +
+        '<div class="fila"><div><div class="gris peq">Meta de hoy</div><b style="font-size:24px">' + meta + ' vasos</b>' + (diasAntes && arrastre ? '<div class="gris peq">' + Math.round(base) + (arrastre > 0 ? ' + ' + arrastre + ' por lo que faltó' : ' − ' + (-arrastre) + ' por lo adelantado') + '</div>' : '') + '</div><div><div class="gris peq">Vendidos hoy</div><b style="font-size:24px">' + vHoy + '</b></div></div>' +
+        '<div class="progreso ' + (avance < 100 ? 'bajo' : '') + '"><i style="width:' + avance + '%"></i></div><div class="gris peq">' + (meta ? (vHoy >= meta ? 'Meta de hoy cumplida' + (vHoy > meta ? ' (+' + (vHoy - meta) + ')' : '') : Math.round(avance) + '% · faltan ' + (meta - vHoy) + ' vasos') : 'Se calcula cuando haya gastos fijos registrados.') + '</div>' +
+        (base ? '<div class="gris peq" style="margin-top:6px">Meta del mes: <b>' + metaMes.toLocaleString('es-CO') + ' vasos</b> · llevan ' + (vasosAntes + vHoy).toLocaleString('es-CO') + ' · quedan ' + diasQuedan + ' día' + (diasQuedan === 1 ? '' : 's') + '</div>' : '') +
+        (r.diasTrabajados ? '<div class="gris peq">Promedio del mes: <b>' + Math.round(r.promedioVasosDia) + ' vasos/día</b> en ' + r.diasTrabajados + ' día' + (r.diasTrabajados === 1 ? '' : 's') + '</div>' : '') + '</div>' +
         '<div class="tarjeta" style="margin-top:16px"><h2>Pendientes</h2>' + (r.alertas.length ? r.alertas.map(function (a) { return '<div class="alerta" data-tipo="' + a.tipo + '">⚠ ' + esc(a.texto) + '</div>'; }).join('') : '<div class="alerta ok">Todo al día.</div>') + '</div>' +
         '<div class="tarjeta" style="margin-top:16px"><h2>Vasos por hora · hoy</h2>' + (horas.length ? barras(horas, 'v', function (x) { return x.h + 'h'; }) : '<div class="vacio">Sin ventas hoy.</div>') + '</div>' +
         '</div></div>';
