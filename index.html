@@ -1595,7 +1595,8 @@
       var diasAntes = Math.max(0, (r.diasTrabajados || 0) - (vHoy > 0 ? 1 : 0)), vasosAntes = Math.max(0, ((r.mes && r.mes.vasos) || 0) - vHoy);
       var pHoy = r.hoy.split('-').map(Number), ultimoDia = new Date(Date.UTC(pHoy[0], pHoy[1], 0)).getUTCDate(), diasQuedan = ultimoDia - pHoy[2] + 1;
       var metaMes = Math.round(base * (diasAntes + diasQuedan));
-      var meta = base ? Math.max(0, Math.ceil((metaMes - vasosAntes) / diasQuedan)) : 0, arrastre = meta - Math.round(base);
+      // Nunca baja de la meta base: lo vendido de más queda como ganancia o adelanta la deuda (Samuel, 17 oct 2026).
+      var meta = base ? Math.max(Math.round(base), Math.ceil((metaMes - vasosAntes) / diasQuedan)) : 0, arrastre = meta - Math.round(base);
       var avance = meta ? Math.min(100, vHoy / meta * 100) : 0;
       var horas = Object.keys(r.porHora).sort().map(function (h) { return { h: h, v: r.porHora[h], corto: r.porHora[h] }; });
       cuenta('cajas', r.alertas.filter(function (a) { return a.tipo === 'cierre' || a.tipo === 'turno'; }).length);
@@ -1614,7 +1615,7 @@
         kpi('Caja acumulada', pesos(m.cajaAcumulada), 'Flujo de Caja', m.cajaAcumulada < 0 ? 'negativo' : '') + '</div></div>' +
         '</div><div>' +
         '<div class="tarjeta"><h2>Punto de equilibrio</h2><p class="gris peq" style="margin-top:-6px">' + (r.equilibrioConPrestamo ? 'Incluye costos fijos y el pago completo del préstamo de Miguel' + (r.primerCuotaMes && r.primerCuotaMes > r.hoy.slice(0, 7) ? ' (se paga en ' + nombreMes(r.primerCuotaMes) + ')' : '') + '.' : 'Costos fijos promedio, sin préstamo.') + '</p>' +
-        '<div class="fila"><div><div class="gris peq">Meta de hoy</div><b style="font-size:24px">' + meta + ' vasos</b>' + (diasAntes && arrastre ? '<div class="gris peq">' + Math.round(base) + (arrastre > 0 ? ' + ' + arrastre + ' por lo que faltó' : ' − ' + (-arrastre) + ' por lo adelantado') + '</div>' : '') + '</div><div><div class="gris peq">Vendidos hoy</div><b style="font-size:24px">' + vHoy + '</b></div></div>' +
+        '<div class="fila"><div><div class="gris peq">Meta de hoy</div><b style="font-size:24px">' + meta + ' vasos</b>' + (diasAntes && arrastre > 0 ? '<div class="gris peq">' + Math.round(base) + ' + ' + arrastre + ' por lo que faltó' + '</div>' : '') + '</div><div><div class="gris peq">Vendidos hoy</div><b style="font-size:24px">' + vHoy + '</b></div></div>' +
         '<div class="progreso ' + (avance < 100 ? 'bajo' : '') + '"><i style="width:' + avance + '%"></i></div><div class="gris peq">' + (meta ? (vHoy >= meta ? 'Meta de hoy cumplida' + (vHoy > meta ? ' (+' + (vHoy - meta) + ')' : '') : Math.round(avance) + '% · faltan ' + (meta - vHoy) + ' vasos') : 'Se calcula cuando haya gastos fijos registrados.') + '</div>' +
         (base ? '<div class="gris peq" style="margin-top:6px">Meta del mes: <b>' + metaMes.toLocaleString('es-CO') + ' vasos</b> · llevan ' + (vasosAntes + vHoy).toLocaleString('es-CO') + ' · quedan ' + diasQuedan + ' día' + (diasQuedan === 1 ? '' : 's') + '</div>' : '') +
         (r.diasTrabajados ? '<div class="gris peq">Promedio del mes: <b>' + Math.round(r.promedioVasosDia) + ' vasos/día</b> en ' + r.diasTrabajados + ' día' + (r.diasTrabajados === 1 ? '' : 's') + '</div>' : '') + '</div>' +
