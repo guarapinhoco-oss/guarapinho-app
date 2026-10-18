@@ -145,6 +145,10 @@
   .op-barra img { width: 42px; height: 42px; }
   .op-barra .marca-txt { font-size: 22px; line-height: 1; text-shadow: 0 2px 0 rgba(0,0,0,.25); }
   .op-barra .quien { font-size: 12px; opacity: .9; font-weight: 700; }
+  .marca-barra { display: flex; align-items: center; gap: 10px; max-width: 980px; margin: 10px auto 0; padding: 8px 10px; border-radius: 12px; background: rgba(255,255,255,.14); font-size: 14px; font-weight: 700; }
+  .marca-barra span { flex: 1; min-width: 0; }
+  .marca-barra small { display: block; font-weight: 600; opacity: .85; font-size: 12px; }
+  .marca-barra button { padding: 8px 14px; font-size: 14px; white-space: nowrap; }
   .op-barra .estado-caja { margin-left: auto; text-align: right; font-size: 12px; font-weight: 800; }
   .op-barra .estado-caja b { display: block; font-size: 17px; }
   .op-barra .estado-caja .sin-red { display: inline-block; margin-bottom: 2px; padding: 1px 8px; border-radius: 99px; background: var(--rojo-claro); color: var(--rojo); font-size: 11px; }
@@ -482,7 +486,7 @@
   .progreso { background: var(--neu-bg); box-shadow: inset 2px 2px 4px var(--neu-osc), inset -2px -2px 4px var(--neu-luz); }
   .modal { --neu-bg: #f3f7f3; }
   /* Socio (solo lectura): sin botones que cambien datos */
-  .solo-lectura #gNuevo, .solo-lectura #aNuevo, .solo-lectura #uNuevo, .solo-lectura #pGuardar, .solo-lectura #rGuardarCap,
+  .solo-lectura #gNuevo, .solo-lectura #hNuevo, .solo-lectura #aNuevo, .solo-lectura #uNuevo, .solo-lectura #pGuardar, .solo-lectura #rGuardarCap,
   .solo-lectura [data-anular], .solo-lectura #mRevisar, .solo-lectura #mCerrarT, .solo-lectura #eGuardar, .solo-lectura #eRecalc { display: none !important; }
   .solo-lectura .interruptor { pointer-events: none; }
   .solo-lectura #vista td input:disabled { background: transparent; border-color: transparent; box-shadow: none; color: var(--texto); opacity: 1; }
@@ -581,6 +585,7 @@
       salir: s('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>'),
       vender: s('<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 7H6"/>'),
       cierre: s('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'),
+      reloj: s('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
       lista: s('<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>'),
       mas: s('<path d="M12 5v14M5 12h14"/>'),
       hoja: s('<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>'),
@@ -631,14 +636,14 @@
     pintarEstadoCaja();
   }
   window.addEventListener('offline', function () { marcarRed(true); });
-  window.addEventListener('online', function () { if (SES) { marcarRed(false); enviarCola(); if (!$('opVista') && AD.hoy) precargarPanel(); } });
+  window.addEventListener('online', function () { if (SES) { marcarRed(false); enviarCola(); enviarMarcas(); if (!$('opVista') && AD.hoy) precargarPanel(); } });
 
   /*
    * Velocidad: las pantallas del panel se guardan en memoria. Al volver a una pestaña se pinta al instante con lo guardado
    * y, si tiene más de 20 segundos, se pide lo nuevo por detrás y se repinta solo si cambió. Cualquier cambio (venta, gasto,
    * precio, usuario...) borra lo guardado, así que después de guardar algo siempre se ve el dato real.
    */
-  var LECTURAS = { adminInit: '', adminInicio: 'inicio', adminVentas: 'ventas', adminTurnos: 'cajas', adminTurno: '', adminDiario: 'diario', adminGastos: 'gastos', adminActivos: 'activos', adminResultados: 'resultados', adminInforme: 'informes', adminUsuarios: 'usuarios' };
+  var LECTURAS = { adminInit: '', adminInicio: 'inicio', adminVentas: 'ventas', adminTurnos: 'cajas', adminTurno: '', adminDiario: 'diario', adminGastos: 'gastos', adminHoras: 'horas', adminActivos: 'activos', adminResultados: 'resultados', adminInforme: 'informes', adminUsuarios: 'usuarios' };
   var SOLO_LEE = { login: 1, logout: 1, validarSesion: 1, adminInit: 1, opInit: 1, opEstado: 1 };
   var GUARDADO = {}, FRESCO_MS = 20000;
   function copia(x) { return x === undefined ? x : JSON.parse(JSON.stringify(x)); }
@@ -900,7 +905,7 @@
         if (d.adminInicio) GUARDADO[k('adminInicio')] = { listo: true, data: d.adminInicio, t: Date.now() };
         if (d.opInit) {
           var o = d.opInit;
-          guardarLocal('gp_op_' + s.usuario, { productos: o.productos, canales: o.canales, categorias: o.categoriasCaja, srv: { turno: o.turno || null, ventas: o.ventas || [], gastos: o.gastos || [] }, t: Date.now(), fresco: true });
+          guardarLocal('gp_op_' + s.usuario, { productos: o.productos, canales: o.canales, categorias: o.categoriasCaja, srv: { turno: o.turno || null, ventas: o.ventas || [], gastos: o.gastos || [] }, marca: o.marca || null, t: Date.now(), fresco: true });
         }
         entrar(s);
       })
@@ -949,7 +954,7 @@
       '<div class="estado-caja" id="estadoCaja"></div>' +
       (SES.rol === 'ADMIN' ? '<button class="icono" id="btnAdmin" title="Administración">' + ICON.resultados.replace('<svg ', '<svg width="22" height="22" ') + '</button>' : '') +
       '<button class="icono" id="btnSalir" title="Salir">' + ICON.salir.replace('<svg ', '<svg width="22" height="22" ') + '</button>' +
-      '</div></div><div class="op-cuerpo" id="opVista">' + cargando() + '</div></div>' +
+      '</div><div class="marca-barra" id="marcaBar" hidden></div></div><div class="op-cuerpo" id="opVista">' + cargando() + '</div></div>' +
       '<div class="carrito" id="carrito"></div>' +
       '<nav class="nav-op" id="navOp">' +
       '<button data-tab="vender">' + ICON.vender + 'Vender</button>' +
@@ -966,13 +971,15 @@
     var g = leerLocal(opKey());
     if (g && g.productos) {
       OP.productos = g.productos; OP.canales = g.canales || []; OP.categorias = g.categorias || [];
+      OP.marca = g.marca || null; pintarMarca();
       OP.srv = g.srv || { turno: null, ventas: [], gastos: [] };
       derivar(); pintarEstadoCaja(); opIr('vender');
     }
-    if (g && g.fresco) { g.fresco = false; guardarLocal(opKey(), g); enviarCola(); return; } // recién traído con el ingreso
+    if (g && g.fresco) { g.fresco = false; guardarLocal(opKey(), g); enviarCola(); if (OP.marca) { aplicarMarcasPendientes(); pintarMarca(); enviarMarcas(); } return; } // recién traído con el ingreso
     api('opInit').then(function (r) {
       var antes = JSON.stringify([OP.productos, OP.turno, OP.ventas, OP.gastos]);
       OP.productos = r.productos; OP.canales = r.canales; OP.categorias = r.categoriasCaja;
+      OP.marca = r.marca || null; if (OP.marca) aplicarMarcasPendientes(); guardarOp(); pintarMarca(); enviarMarcas();
       opAplicarEstado(r);
       if (!g || !g.productos) opIr('vender'); else if (JSON.stringify([OP.productos, OP.turno, OP.ventas, OP.gastos]) !== antes) repintarOp();
       enviarCola();
@@ -987,7 +994,7 @@
    * (apertura, ventas, gastos y cierre). Lo que se ve en pantalla (OP.turno, OP.ventas, OP.gastos) es la suma de las dos.
    */
   function opKey() { return 'gp_op_' + (SES ? SES.usuario : ''); }
-  function guardarOp() { if (SES) guardarLocal(opKey(), { productos: OP.productos, canales: OP.canales, categorias: OP.categorias, srv: OP.srv, t: Date.now() }); }
+  function guardarOp() { if (SES) guardarLocal(opKey(), { productos: OP.productos, canales: OP.canales, categorias: OP.categorias, srv: OP.srv, marca: OP.marca || null, t: Date.now() }); }
   function opAplicarEstado(r) {
     OP.srv = { turno: r.turno || null, ventas: r.ventas || [], gastos: r.gastos || [] };
     derivar(); guardarOp(); pintarEstadoCaja();
@@ -1020,6 +1027,68 @@
     });
     OP.turno = t; OP.gastos = t ? gastos : [];
     OP.ventas = t && srv.turno && srv.turno.id === t.id ? srv.ventas : [];
+  }
+  /*
+   * Entrada y salida del operador (control de horas extra). Va en su propia cola del celular: se marca aunque no haya señal
+   * y se envía al volver la conexión con la hora real de la marca. OP.marca = {hoy: {fecha, entrada, salida}, entrada, salida}.
+   */
+  function marcasKey() { return 'gp_marcas_' + (SES ? SES.usuario : ''); }
+  function marcasPendientes() { return leerLocal(marcasKey()) || []; }
+  function marcaDeHoy() {
+    var h = OP.marca && OP.marca.hoy, hoy = hoyISO();
+    if (!h) return null;
+    if (h.fecha === hoy) return h;
+    // Turno que pasó la medianoche: sigue abierto hasta las 6 de la mañana.
+    return h.fecha === sumarDias(hoy, -1) && h.entrada && hora24() < '06:00' ? h : null;
+  }
+  function aplicarMarcasPendientes() {
+    marcasPendientes().forEach(function (x) {
+      var h = marcaDeHoy();
+      if (x.tipo === 'ENTRADA') { if (!h || h.fecha !== x.fecha) OP.marca.hoy = { fecha: x.fecha, entrada: x.hora, salida: '' }; else if (!h.entrada) h.entrada = x.hora; }
+      else if (h) h.salida = h.fecha === x.fecha ? x.hora : (Number(x.hora.slice(0, 2)) + 24) + x.hora.slice(2);
+    });
+  }
+  function pintarMarca() {
+    var el = $('marcaBar'); if (!el) return;
+    if (!OP.marca) { el.hidden = true; return; }
+    var h = marcaDeHoy(), pend = marcasPendientes().length, horario = 'Horario ' + OP.marca.entrada + ' a ' + OP.marca.salida;
+    el.hidden = false;
+    el.innerHTML = !h || !h.entrada
+      ? '<span>¿Ya llegaste?<small>' + horario + '</small></span><button class="amarillo" data-marca="ENTRADA">Marcar entrada</button>'
+      : !h.salida
+        ? '<span>Entrada ' + esc(h.entrada) + '<small>' + horario + (pend ? ' · por enviar' : '') + '</small></span><button class="amarillo" data-marca="SALIDA">Marcar salida</button>'
+        : '<span>' + (h.fecha === hoyISO() ? 'Hoy' : 'Ayer') + ': ' + esc(h.entrada) + ' a ' + esc(horaTurno(h.salida)) + '<small>' + (pend ? 'Por enviar' : 'Guardado') + '</small></span><button class="sec" data-marca="SALIDA">Salí más tarde</button>';
+    $$('[data-marca]', el).forEach(function (b) { b.onclick = function () { marcar(b.getAttribute('data-marca')); }; });
+  }
+  function marcar(tipo) {
+    // Fecha y hora del celular; una salida después de medianoche el servidor la pasa al turno del día anterior.
+    var hora = hora24(), hoy = hoyISO();
+    confirmar(tipo === 'ENTRADA' ? 'Marcar entrada' : 'Marcar salida', (tipo === 'ENTRADA' ? 'Entrada' : 'Salida') + ' a las <b>' + hora + '</b>.', 'Marcar').then(function (si) {
+      if (!si) return;
+      var x = { id: idNuevo('M'), tipo: tipo, fecha: hoy, hora: hora };
+      var c = marcasPendientes(); c.push(x); guardarLocal(marcasKey(), c);
+      aplicarMarcasPendientes(); guardarOp(); pintarMarca(); vibrar(30);
+      aviso(tipo === 'ENTRADA' ? 'Entrada marcada' : 'Salida marcada', 'exito');
+      enviarMarcas();
+    });
+  }
+  var ENVIANDO_MARCAS = false;
+  function enviarMarcas() {
+    if (ENVIANDO_MARCAS || !SES || !OP.marca) return;
+    var c = marcasPendientes(); if (!c.length) return;
+    ENVIANDO_MARCAS = true;
+    var x = c[0];
+    llamar('opMarcar', [{ id: x.id, tipo: x.tipo, fecha: x.fecha, hora: x.hora }]).then(function (r) {
+      ENVIANDO_MARCAS = false;
+      guardarLocal(marcasKey(), marcasPendientes().filter(function (y) { return y.id !== x.id; }));
+      OP.marca.hoy = r.marca; aplicarMarcasPendientes(); guardarOp(); pintarMarca();
+      enviarMarcas();
+    }, function (e) {
+      ENVIANDO_MARCAS = false;
+      if (e.red || e.sesion) return; // se reintenta al volver la señal o al entrar de nuevo
+      guardarLocal(marcasKey(), marcasPendientes().filter(function (y) { return y.id !== x.id; }));
+      aviso('No se guardó la marca: ' + e.message, 'error'); pintarMarca();
+    });
   }
   function cola() { return leerLocal(colaKey()) || []; }
   function guardarCola(c) { guardarLocal(colaKey(), c); derivar(); pintarEstadoCaja(); }
@@ -1516,6 +1585,7 @@
     { id: 'cajas', t: 'Cierres de caja', i: 'caja' },
     { id: 'diario', t: 'Reporte diario', i: 'diario' },
     { id: 'gastos', t: 'Gastos y proveedores', i: 'gastos', separador: true },
+    { id: 'horas', t: 'Horas extra', i: 'reloj' },
     { id: 'activos', t: 'Activos y equipos', i: 'activos' },
     { id: 'resultados', t: 'Resultados y reparto', i: 'resultados' },
     { id: 'informes', t: 'Informes', i: 'informes' },
@@ -1570,7 +1640,7 @@
     window.scrollTo(0, 0);
     VISTAS[s.id]();
   }
-  var VISTAS = { inicio: function () { vInicio(); }, ventas: function () { vVentas(); }, cajas: function () { vCajas(); }, diario: function () { vDiario(); }, gastos: function () { vGastos(); }, activos: function () { vActivos(); }, resultados: function () { vResultados(); }, informes: function () { vInformes(); }, precios: function () { vPrecios(); }, usuarios: function () { vUsuarios(); } };
+  var VISTAS = { inicio: function () { vInicio(); }, ventas: function () { vVentas(); }, cajas: function () { vCajas(); }, diario: function () { vDiario(); }, gastos: function () { vGastos(); }, horas: function () { vHoras(); }, activos: function () { vActivos(); }, resultados: function () { vResultados(); }, informes: function () { vInformes(); }, precios: function () { vPrecios(); }, usuarios: function () { vUsuarios(); } };
   function fallaVista(e) { if (!$('vista')) return; $('vista').innerHTML = '<p class="error">' + esc(e.red ? 'Sin conexión: esta pantalla no se alcanzó a cargar en este celular antes de perder la señal.' : e.message) + '</p>'; }
   function kpi(t, v, s, clase) { return '<div class="kpi ' + (clase || '') + '"><span>' + t + '</span><b class="num">' + v + '</b>' + (s ? '<small>' + s + '</small>' : '') + '</div>'; }
   function cuenta(sec, n) { var e = document.querySelector('[data-cuenta="' + sec + '"]'); if (e) { e.textContent = n; e.style.display = n ? '' : 'none'; } }
@@ -1776,6 +1846,54 @@
       $('gNuevo').onclick = function () { formGasto(tab, null); };
       $$('[data-fila]').forEach(function (tr) { tr.onclick = function () { formGasto(tab, lista.filter(function (x) { return String(x.fila) === tr.getAttribute('data-fila'); })[0]); }; });
     }).catch(fallaVista);
+  }
+
+  // ---------- Horas del operador ----------
+  /** '25:10' (salida después de medianoche) → '01:10 (+1)'. */
+  function horaTurno(h) { var n = Number(String(h || '').slice(0, 2)); return n >= 24 ? ('0' + (n - 24)).slice(-2) + String(h).slice(2) + ' (+1)' : String(h || ''); }
+  function horasMin(m) { m = m || 0; return Math.floor(m / 60) + ':' + ('0' + (m % 60)).slice(-2); }
+  function quincena(iso, mover) {
+    var p = iso.split('-').map(Number), primera = p[2] <= 15;
+    if (mover === -1) { if (primera) { var ant = sumarDias(iso.slice(0, 8) + '01', -1); return quincena(ant); } return quincena(iso.slice(0, 8) + '01'); }
+    var ult = new Date(Date.UTC(p[0], p[1], 0)).getUTCDate();
+    return { desde: iso.slice(0, 8) + (primera ? '01' : '16'), hasta: iso.slice(0, 8) + (primera ? '15' : String(ult)) };
+  }
+  function vHoras() {
+    var f = AD.fHoras || quincena(AD.hoy);
+    api('adminHoras', f.desde, f.hasta).then(function (r) {
+      var v = r.valorHora, emp = r.empleados[0] || { usuario: '', nombre: 'Operador' };
+      var faltan = r.dias.filter(function (d) { return d.falta; }).length;
+      $('vista').innerHTML =
+        '<p class="gris peq" style="margin-top:-6px">' + esc(emp.nombre) + ' marca entrada y salida en su app. Horario pactado ' + esc(r.horario.entrada) + ' a ' + esc(r.horario.salida) + ': lo que marque antes o después es hora extra (en bloques de 15 minutos). Valor por hora: diurna ' + pesos(v.diurna) + ', nocturna (desde las 7 p. m.) ' + pesos(v.nocturna) + '; domingo ' + pesos(v.diurnaDominical) + ' y ' + pesos(v.nocturnaDominical) + '.</p>' +
+        '<div class="filtros"><div style="flex:0 0 auto"><button class="sec" id="hAnt">‹ Quincena anterior</button></div><div style="flex:0 0 auto"><button class="sec" id="hAct">Quincena actual</button></div>' +
+        '<div><label>Desde</label><input type="date" id="hDesde" value="' + esc(r.desde) + '"></div><div><label>Hasta</label><input type="date" id="hHasta" value="' + esc(r.hasta) + '"></div><div style="flex:0 0 auto"><button class="sec" id="hVer">Ver</button></div>' +
+        '<div style="flex:0 0 auto"><button class="amarillo" id="hNuevo">' + ICON.mas + ' Corregir un día</button></div></div>' +
+        '<div class="kpis">' + kpi('Horas extra a pagar', pesos(r.valor), fechaCorta(r.desde) + ' al ' + fechaCorta(r.hasta), 'destacado') + kpi('Horas extra', horasMin(r.minutos), r.dias.length + ' día' + (r.dias.length === 1 ? '' : 's') + ' marcados') +
+        kpi('Marcas incompletas', String(faltan), faltan ? 'Corrígelas para que cuenten' : 'Todo completo', faltan ? 'negativo' : '') + '</div>' +
+        (r.dias.length ? '<div class="tabla-scroll"><table><thead><tr><th>Día</th><th>Entrada</th><th>Salida</th><th class="n">Extra diurna</th><th class="n">Extra nocturna</th><th class="n">Valor</th><th>Nota</th></tr></thead><tbody>' + r.dias.map(function (d, i) {
+          return '<tr class="clic" data-h="' + i + '"><td>' + diaSemana(d.fecha) + ' ' + fechaCorta(d.fecha).slice(0, 5) + (d.domingo ? ' <span class="chip">domingo</span>' : '') + '</td><td>' + esc(d.entrada || '—') + '</td><td>' + (d.salida ? esc(horaTurno(d.salida)) : '<span class="chip rojo">Falta</span>') + '</td>' +
+            '<td class="n">' + horasMin(d.diurna) + '</td><td class="n">' + horasMin(d.nocturna) + '</td><td class="n">' + pesos(d.valor) + '</td><td class="peq">' + esc(d.nota) + (d.editadoPor ? ' <span class="gris">(corrigió ' + esc(d.editadoPor) + ')</span>' : '') + '</td></tr>';
+        }).join('') + '</tbody></table></div>' : '<div class="vacio">Sin marcas en estas fechas.</div>') +
+        '<p class="gris peq">Las horas extra de cada quincena se suman solas al aviso de nómina en Inicio.</p>';
+      $('hAnt').onclick = function () { AD.fHoras = quincena(r.desde, -1); vHoras(); };
+      $('hAct').onclick = function () { AD.fHoras = null; vHoras(); };
+      $('hVer').onclick = function () { AD.fHoras = { desde: $('hDesde').value, hasta: $('hHasta').value }; vHoras(); };
+      $('hNuevo').onclick = function () { formHoras(emp, null); };
+      $$('[data-h]').forEach(function (tr) { tr.onclick = function () { if (SES.rol === 'ADMIN') formHoras(emp, r.dias[Number(tr.getAttribute('data-h'))]); }; });
+    }).catch(fallaVista);
+  }
+  function formHoras(emp, d) {
+    d = d || { fecha: AD.hoy, entrada: '', salida: '', nota: '' };
+    var m = modal('Horas de ' + esc(emp.nombre),
+      '<label>Día</label><input type="date" id="hF" value="' + esc(d.fecha) + '"' + (d.fila ? ' disabled' : '') + '>' +
+      '<div class="grid2"><div><label>Entrada</label><input id="hE" inputmode="numeric" placeholder="12:00" value="' + esc(d.entrada) + '"></div><div><label>Salida</label><input id="hS" inputmode="numeric" placeholder="21:00" value="' + esc(d.salida) + '"></div></div>' +
+      '<p class="gris peq">Formato 24 horas: 10:30, 22:15. Si salió después de medianoche: 24:30, 25:00.</p>' +
+      '<label>Nota</label><input id="hN" value="' + esc(d.nota) + '" placeholder="Ej.: olvidó marcar la salida">' +
+      '<div class="acciones"><button id="hG">Guardar</button></div>');
+    m.querySelector('#hG').onclick = function () {
+      var x = { fecha: m.querySelector('#hF').value, usuario: emp.usuario, entrada: m.querySelector('#hE').value.trim(), salida: m.querySelector('#hS').value.trim(), nota: m.querySelector('#hN').value.trim() };
+      api('adminGuardarMarca', x).then(function () { m.cerrar(); aviso('Horas guardadas', 'exito'); vHoras(); }).catch(function (e) { aviso(e.message, 'error'); });
+    };
   }
 
   function formGasto(tab, x) {
