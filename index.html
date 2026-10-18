@@ -1060,16 +1060,36 @@
         : '<span>' + (h.fecha === hoyISO() ? 'Hoy' : 'Ayer') + ': ' + esc(h.entrada) + ' a ' + esc(horaTurno(h.salida)) + '<small>' + (pend ? 'Por enviar' : 'Guardado') + '</small></span><button class="sec" data-marca="SALIDA">Salí más tarde</button>';
     $$('[data-marca]', el).forEach(function (b) { b.onclick = function () { marcar(b.getAttribute('data-marca')); }; });
   }
+  /** GPS del celular para comprobar que la marca se hace en el punto. Funciona sin señal; nunca tarda más de 12 s. */
+  function ubicacion() {
+    return new Promise(function (ok) {
+      var listo = false, fin = function (x) { if (!listo) { listo = true; ok(x); } };
+      if (!navigator.geolocation) return fin({ ubicError: 'apagado' });
+      setTimeout(function () { fin({ ubicError: 'tiempo' }); }, 12000);
+      try {
+        navigator.geolocation.getCurrentPosition(function (p) { fin({ ubic: { lat: p.coords.latitude, lng: p.coords.longitude, prec: Math.round(p.coords.accuracy) } }); },
+          function (e) { fin({ ubicError: e.code === 1 ? 'permiso' : e.code === 3 ? 'tiempo' : 'apagado' }); },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
+      } catch (e) { fin({ ubicError: 'apagado' }); }
+    });
+  }
+  var MARCANDO = false;
   function marcar(tipo) {
-    // Fecha y hora del celular; una salida después de medianoche el servidor la pasa al turno del día anterior.
+    if (MARCANDO) return;
+    // Fecha y hora del celular (el servidor las reemplaza por las suyas si la marca llega al momento);
+    // una salida después de medianoche el servidor la pasa al turno del día anterior.
     var hora = hora24(), hoy = hoyISO();
-    confirmar(tipo === 'ENTRADA' ? 'Marcar entrada' : 'Marcar salida', (tipo === 'ENTRADA' ? 'Entrada' : 'Salida') + ' a las <b>' + hora + '</b>.', 'Marcar').then(function (si) {
+    confirmar(tipo === 'ENTRADA' ? 'Marcar entrada' : 'Marcar salida', (tipo === 'ENTRADA' ? 'Entrada' : 'Salida') + ' a las <b>' + hora + '</b>.<br><span class="gris peq">Se guarda la ubicación del celular para comprobar que estás en el punto.</span>', 'Marcar').then(function (si) {
       if (!si) return;
-      var x = { id: idNuevo('M'), tipo: tipo, fecha: hoy, hora: hora };
-      var c = marcasPendientes(); c.push(x); guardarLocal(marcasKey(), c);
-      aplicarMarcasPendientes(); guardarOp(); pintarMarca(); vibrar(30);
-      aviso(tipo === 'ENTRADA' ? 'Entrada marcada' : 'Salida marcada', 'exito');
-      enviarMarcas();
+      MARCANDO = true; aviso('Tomando la ubicación…', '', 12000);
+      ubicacion().then(function (u) {
+        MARCANDO = false;
+        var x = { id: idNuevo('M'), tipo: tipo, fecha: hoy, hora: hora, ubic: u.ubic || null, ubicError: u.ubicError || '' };
+        var c = marcasPendientes(); c.push(x); guardarLocal(marcasKey(), c);
+        aplicarMarcasPendientes(); guardarOp(); pintarMarca(); vibrar(30);
+        aviso(u.ubic ? (tipo === 'ENTRADA' ? 'Entrada marcada' : 'Salida marcada') : 'Marcada sin ubicación: activa el GPS y da permiso de ubicación a la app', u.ubic ? 'exito' : 'error');
+        enviarMarcas();
+      });
     });
   }
   var ENVIANDO_MARCAS = false;
@@ -1078,8 +1098,9 @@
     var c = marcasPendientes(); if (!c.length) return;
     ENVIANDO_MARCAS = true;
     var x = c[0];
-    llamar('opMarcar', [{ id: x.id, tipo: x.tipo, fecha: x.fecha, hora: x.hora }]).then(function (r) {
+    llamar('opMarcar', [{ id: x.id, tipo: x.tipo, fecha: x.fecha, hora: x.hora, ubic: x.ubic || null, ubicError: x.ubicError || '' }]).then(function (r) {
       ENVIANDO_MARCAS = false;
+      if (r && r.verificada === false) aviso('Marca guardada. El administrador la revisará: ' + r.prueba, 'error', 8000);
       guardarLocal(marcasKey(), marcasPendientes().filter(function (y) { return y.id !== x.id; }));
       OP.marca.hoy = r.marca; aplicarMarcasPendientes(); guardarOp(); pintarMarca();
       enviarMarcas();
@@ -1650,6 +1671,7 @@
       return '<div class="b ' + (destacado && destacado(d) ? 'hoy' : '') + '" title="' + esc(etiqueta(d)) + ': ' + esc(d.titulo || '') + '"><small>' + esc(d.corto || '') + '</small><i style="height:' + Math.max(1, Math.round(d[clave] / max * 100)) + '%"></i><em>' + esc(etiqueta(d)) + '</em></div>';
     }).join('') + '</div>';
   }
+  function fechaLarga(iso) { var p = String(iso).split('-'); return Number(p[2]) + ' ' + ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][Number(p[1]) - 1]; }
   function corto(n) { n = Number(n || 0); if (Math.abs(n) >= 1e6) return (Math.round(n / 1e5) / 10).toLocaleString('es-CO') + 'M'; if (Math.abs(n) >= 1e3) return Math.round(n / 1e3) + 'k'; return String(Math.round(n)); }
 
   // ---------- Inicio ----------
@@ -1664,6 +1686,9 @@
       var vHoy = (d && d.vasos) || 0, base = eq.vasosDia || 0;
       var diasAntes = Math.max(0, (r.diasTrabajados || 0) - (vHoy > 0 ? 1 : 0)), vasosAntes = Math.max(0, ((r.mes && r.mes.vasos) || 0) - vHoy);
       var pHoy = r.hoy.split('-').map(Number), ultimoDia = new Date(Date.UTC(pHoy[0], pHoy[1], 0)).getUTCDate(), diasQuedan = ultimoDia - pHoy[2] + 1;
+      // Con una cuota del préstamo por vencer, la meta se mide del 16 al 15 (período de la deuda), no en el mes calendario.
+      var pd = r.periodoDeuda;
+      if (pd) { diasAntes = pd.diasAntes; vasosAntes = pd.vasosAntes; diasQuedan = pd.dias - pd.diasAntes; }
       var metaMes = Math.round(base * (diasAntes + diasQuedan));
       // Nunca baja de la meta base: lo vendido de más queda como ganancia o adelanta la deuda (Samuel, 17 oct 2026).
       var meta = base ? Math.max(Math.round(base), Math.ceil((metaMes - vasosAntes) / diasQuedan)) : 0, arrastre = meta - Math.round(base);
@@ -1684,10 +1709,10 @@
         kpi('Utilidad neta', pesos(m.utilidadNeta), 'Según Resumen Mensual', m.utilidadNeta < 0 ? 'negativo' : '') +
         kpi('Caja acumulada', pesos(m.cajaAcumulada), 'Flujo de Caja', m.cajaAcumulada < 0 ? 'negativo' : '') + '</div></div>' +
         '</div><div>' +
-        '<div class="tarjeta"><h2>Punto de equilibrio</h2><p class="gris peq" style="margin-top:-6px">' + (r.equilibrioConPrestamo ? 'Incluye costos fijos y el pago completo del préstamo de Miguel' + (r.primerCuotaMes && r.primerCuotaMes > r.hoy.slice(0, 7) ? ' (se paga en ' + nombreMes(r.primerCuotaMes) + ')' : '') + '.' : 'Costos fijos promedio, sin préstamo.') + '</p>' +
+        '<div class="tarjeta"><h2>Punto de equilibrio</h2><p class="gris peq" style="margin-top:-6px">' + (pd ? 'Incluye costos fijos y ' + (pd.cuotas > 1 ? 'la cuota ' + pd.cuota + ' de ' + pd.cuotas : 'el pago completo') + ' del préstamo de Miguel, que vence el ' + fechaLarga(pd.pago) + '. Se mide del ' + fechaLarga(pd.desde) + ' al ' + fechaLarga(pd.hasta) + '.' : r.equilibrioConPrestamo ? 'Incluye costos fijos y el pago completo del préstamo de Miguel' + (r.primerCuotaMes && r.primerCuotaMes > r.hoy.slice(0, 7) ? ' (se paga en ' + nombreMes(r.primerCuotaMes) + ')' : '') + '.' : 'Costos fijos promedio, sin préstamo.') + '</p>' +
         '<div class="fila"><div><div class="gris peq">Meta de hoy</div><b style="font-size:24px">' + meta + ' vasos</b>' + (diasAntes && arrastre > 0 ? '<div class="gris peq">' + Math.round(base) + ' + ' + arrastre + ' por lo que faltó' + '</div>' : '') + '</div><div><div class="gris peq">Vendidos hoy</div><b style="font-size:24px">' + vHoy + '</b></div></div>' +
         '<div class="progreso ' + (avance < 100 ? 'bajo' : '') + '"><i style="width:' + avance + '%"></i></div><div class="gris peq">' + (meta ? (vHoy >= meta ? 'Meta de hoy cumplida' + (vHoy > meta ? ' (+' + (vHoy - meta) + ')' : '') : Math.round(avance) + '% · faltan ' + (meta - vHoy) + ' vasos') : 'Se calcula cuando haya gastos fijos registrados.') + '</div>' +
-        (base ? '<div class="gris peq" style="margin-top:6px">Meta del mes: <b>' + metaMes.toLocaleString('es-CO') + ' vasos</b> · llevan ' + (vasosAntes + vHoy).toLocaleString('es-CO') + ' · quedan ' + diasQuedan + ' día' + (diasQuedan === 1 ? '' : 's') + '</div>' : '') +
+        (base ? '<div class="gris peq" style="margin-top:6px">' + (pd ? 'Meta para la cuota del ' + fechaLarga(pd.pago) : 'Meta del mes') + ': <b>' + metaMes.toLocaleString('es-CO') + ' vasos</b> · llevan ' + (vasosAntes + vHoy).toLocaleString('es-CO') + ' · quedan ' + diasQuedan + ' día' + (diasQuedan === 1 ? '' : 's') + '</div>' : '') +
         (r.diasTrabajados ? '<div class="gris peq">Promedio del mes: <b>' + Math.round(r.promedioVasosDia) + ' vasos/día</b> en ' + r.diasTrabajados + ' día' + (r.diasTrabajados === 1 ? '' : 's') + '</div>' : '') + '</div>' +
         '<div class="tarjeta" style="margin-top:16px"><h2>Pendientes</h2>' + (r.alertas.length ? r.alertas.map(function (a, i) { return '<div class="alerta" data-tipo="' + a.tipo + '">⚠ <span style="flex:1">' + esc(a.texto) + (a.tipo === 'nomina' && SES.rol === 'ADMIN' ? '<br><button class="peq" data-nomina="' + i + '" style="margin-top:8px">Registrar pago de hoy</button>' : '') + '</span></div>'; }).join('') : '<div class="alerta ok">Todo al día.</div>') + '</div>' +
         '<div class="tarjeta" style="margin-top:16px"><h2>Vasos por hora · hoy</h2>' + (horas.length ? barras(horas, 'v', function (x) { return x.h + 'h'; }) : '<div class="vacio">Sin ventas hoy.</div>') + '</div>' +
@@ -1862,32 +1887,69 @@
     var f = AD.fHoras || quincena(AD.hoy);
     api('adminHoras', f.desde, f.hasta).then(function (r) {
       var v = r.valorHora, emp = r.empleados[0] || { usuario: '', nombre: 'Operador' };
-      var faltan = r.dias.filter(function (d) { return d.falta; }).length;
+      var faltan = r.dias.filter(function (d) { return d.falta; }).length, admin = SES.rol === 'ADMIN';
+      var CHIP = { verificada: '<span class="chip">Verificada</span>', aprobada: '<span class="chip azul">Aprobada</span>', 'por aprobar': '<span class="chip rojo">Por aprobar</span>' };
       $('vista').innerHTML =
         '<p class="gris peq" style="margin-top:-6px">' + esc(emp.nombre) + ' marca entrada y salida en su app. Horario pactado ' + esc(r.horario.entrada) + ' a ' + esc(r.horario.salida) + ': lo que marque antes o después es hora extra (en bloques de 15 minutos). Valor por hora: diurna ' + pesos(v.diurna) + ', nocturna (desde las 7 p. m.) ' + pesos(v.nocturna) + '; domingo ' + pesos(v.diurnaDominical) + ' y ' + pesos(v.nocturnaDominical) + '.</p>' +
+        '<p class="gris peq">Cada marca se verifica sola: se guarda con la hora del servidor (no la del celular) y con el GPS, que debe estar a menos de ' + r.radioM + ' m del punto. Si una marca se hizo sin señal, sin GPS o lejos del punto, las extras de ese día quedan <b>por aprobar</b> y no se pagan hasta que las apruebes.</p>' +
+        (r.punto ? '<p class="gris peq">Ubicación del punto fijada el ' + esc(r.punto.fecha) + ' por ' + esc(r.punto.por) + '.' + (admin ? ' <a href="#" id="hPunto">Volver a fijarla</a>' : '') + '</p>'
+          : '<div class="alerta" id="hPuntoA">Falta fijar la ubicación del punto: sin ella ninguna marca queda verificada.' + (admin ? ' Párate en el punto y toca aquí.' : ' Debe hacerlo un administrador desde el punto.') + '</div>') +
         '<div class="filtros"><div style="flex:0 0 auto"><button class="sec" id="hAnt">‹ Quincena anterior</button></div><div style="flex:0 0 auto"><button class="sec" id="hAct">Quincena actual</button></div>' +
         '<div><label>Desde</label><input type="date" id="hDesde" value="' + esc(r.desde) + '"></div><div><label>Hasta</label><input type="date" id="hHasta" value="' + esc(r.hasta) + '"></div><div style="flex:0 0 auto"><button class="sec" id="hVer">Ver</button></div>' +
         '<div style="flex:0 0 auto"><button class="amarillo" id="hNuevo">' + ICON.mas + ' Corregir un día</button></div></div>' +
         '<div class="kpis">' + kpi('Horas extra a pagar', pesos(r.valor), fechaCorta(r.desde) + ' al ' + fechaCorta(r.hasta), 'destacado') + kpi('Horas extra', horasMin(r.minutos), r.dias.length + ' día' + (r.dias.length === 1 ? '' : 's') + ' marcados') +
+        kpi('Por aprobar', pesos(r.porAprobar), r.nPorAprobar ? r.nPorAprobar + ' día' + (r.nPorAprobar === 1 ? '' : 's') + ' sin verificar' : 'Nada pendiente', r.nPorAprobar ? 'negativo' : '') +
         kpi('Marcas incompletas', String(faltan), faltan ? 'Corrígelas para que cuenten' : 'Todo completo', faltan ? 'negativo' : '') + '</div>' +
-        (r.dias.length ? '<div class="tabla-scroll"><table><thead><tr><th>Día</th><th>Entrada</th><th>Salida</th><th class="n">Extra diurna</th><th class="n">Extra nocturna</th><th class="n">Valor</th><th>Nota</th></tr></thead><tbody>' + r.dias.map(function (d, i) {
-          return '<tr class="clic" data-h="' + i + '"><td>' + diaSemana(d.fecha) + ' ' + fechaCorta(d.fecha).slice(0, 5) + (d.domingo ? ' <span class="chip">domingo</span>' : '') + '</td><td>' + esc(d.entrada || '—') + '</td><td>' + (d.salida ? esc(horaTurno(d.salida)) : '<span class="chip rojo">Falta</span>') + '</td>' +
-            '<td class="n">' + horasMin(d.diurna) + '</td><td class="n">' + horasMin(d.nocturna) + '</td><td class="n">' + pesos(d.valor) + '</td><td class="peq">' + esc(d.nota) + (d.editadoPor ? ' <span class="gris">(corrigió ' + esc(d.editadoPor) + ')</span>' : '') + '</td></tr>';
+        (r.dias.length ? '<div class="tabla-scroll"><table><thead><tr><th>Día</th><th>Entrada</th><th>Salida</th><th class="n">Extra diurna</th><th class="n">Extra nocturna</th><th class="n">Valor</th><th>Verificación</th><th>Caja</th><th>Nota</th></tr></thead><tbody>' + r.dias.map(function (d, i) {
+          var c = d.caja;
+          return '<tr class="clic" data-h="' + i + '"><td>' + diaSemana(d.fecha) + ' ' + fechaCorta(d.fecha).slice(0, 5) + (d.domingo ? ' <span class="chip">domingo</span>' : '') + '</td><td>' + esc(d.entrada || '—') + (d.entrada && !d.verEntrada ? ' <span style="color:var(--rojo)" title="Sin verificar">⚠</span>' : '') + '</td><td>' + (d.salida ? esc(horaTurno(d.salida)) + (!d.verSalida ? ' <span style="color:var(--rojo)" title="Sin verificar">⚠</span>' : '') : '<span class="chip rojo">Falta</span>') + '</td>' +
+            '<td class="n">' + horasMin(d.diurna) + '</td><td class="n">' + horasMin(d.nocturna) + '</td><td class="n">' + pesos(d.valor) + '</td><td>' + (CHIP[d.estado] || '<span class="gris peq">Sin extra</span>') + '</td>' +
+            '<td class="peq">' + (c ? (c.apertura ? 'Abrió ' + esc(c.apertura) : '') + (c.cierre ? (c.apertura ? ' · ' : '') + 'cerró ' + esc(horaTurno(c.cierre)) : '') + (c.primera ? '<div class="gris">Ventas ' + esc(c.primera) + ' a ' + esc(c.ultima) + '</div>' : '') : '<span class="gris">—</span>') + '</td>' +
+            '<td class="peq">' + esc(d.nota) + (d.editadoPor ? ' <span class="gris">(corrigió ' + esc(d.editadoPor) + ')</span>' : '') + '</td></tr>';
         }).join('') + '</tbody></table></div>' : '<div class="vacio">Sin marcas en estas fechas.</div>') +
-        '<p class="gris peq">Las horas extra de cada quincena se suman solas al aviso de nómina en Inicio.</p>';
+        '<p class="gris peq">Toca un día para ver la prueba de cada marca, aprobarlo o corregirlo. Las horas verificadas o aprobadas se suman solas al aviso de nómina en Inicio.</p>';
       $('hAnt').onclick = function () { AD.fHoras = quincena(r.desde, -1); vHoras(); };
       $('hAct').onclick = function () { AD.fHoras = null; vHoras(); };
       $('hVer').onclick = function () { AD.fHoras = { desde: $('hDesde').value, hasta: $('hHasta').value }; vHoras(); };
       $('hNuevo').onclick = function () { formHoras(emp, null); };
-      $$('[data-h]').forEach(function (tr) { tr.onclick = function () { if (SES.rol === 'ADMIN') formHoras(emp, r.dias[Number(tr.getAttribute('data-h'))]); }; });
+      var fijar = function (e) { if (e) e.preventDefault(); if (admin) fijarPunto(); };
+      if ($('hPunto')) $('hPunto').onclick = fijar;
+      if ($('hPuntoA')) $('hPuntoA').onclick = fijar;
+      $$('[data-h]').forEach(function (tr) { tr.onclick = function () { verDiaHoras(emp, r.dias[Number(tr.getAttribute('data-h'))]); }; });
     }).catch(fallaVista);
+  }
+  function fijarPunto() {
+    confirmar('Fijar ubicación del punto', 'Hazlo parado en el punto de venta. Desde ahora las marcas de entrada y salida se comparan con esta ubicación.', 'Fijar aquí').then(function (si) {
+      if (!si) return;
+      aviso('Tomando la ubicación…', '', 12000);
+      ubicacion().then(function (u) {
+        if (!u.ubic) { aviso(u.ubicError === 'permiso' ? 'Da permiso de ubicación a la app e intenta de nuevo' : 'No se pudo leer el GPS. Actívalo e intenta de nuevo', 'error'); return; }
+        api('adminFijarPunto', u.ubic).then(function () { aviso('Ubicación del punto guardada (GPS ±' + u.ubic.prec + ' m)', 'exito'); vHoras(); }).catch(function (e) { aviso(e.message, 'error'); });
+      });
+    });
+  }
+  function verDiaHoras(emp, d) {
+    var admin = SES.rol === 'ADMIN', c = d.caja;
+    var linea = function (t, h, ver, prueba) {
+      return '<div class="peq" style="margin-bottom:8px"><b>' + t + ' ' + esc(h ? horaTurno(h) : '—') + '</b> ' + (!h ? '' : ver ? '<span class="chip">Verificada</span>' : '<span class="chip rojo">Sin verificar</span>') +
+        (prueba ? '<div class="gris">' + esc(prueba) + '</div>' : h ? '<div class="gris">Escrita a mano en el panel</div>' : '') + '</div>';
+    };
+    var m = modal(diaSemana(d.fecha) + ' ' + fechaCorta(d.fecha),
+      linea('Entrada', d.entrada, d.verEntrada, d.pruebaEntrada) + linea('Salida', d.salida, d.verSalida, d.pruebaSalida) +
+      '<div class="peq" style="margin-bottom:8px"><b>Caja ese día</b><div class="gris">' + (c ? [c.apertura ? 'Abrió ' + esc(c.apertura) : '', c.cierre ? 'cerró ' + esc(horaTurno(c.cierre)) : '', c.primera ? 'ventas de ' + esc(c.primera) + ' a ' + esc(c.ultima) : ''].filter(Boolean).join(' · ') : 'Sin caja ni ventas') + '</div></div>' +
+      '<div class="peq"><b>Extra:</b> ' + horasMin(d.diurna + d.nocturna) + ' = ' + pesos(d.valor) + (d.estado === 'aprobada' ? ' · aprobada por ' + esc(d.aprobadoPor) : '') + '</div>' +
+      (admin ? '<div class="acciones"><button class="sec" id="hC">Corregir</button>' + (d.estado === 'por aprobar' ? '<button id="hA">Aprobar ' + pesos(d.valor) + '</button>' : '') + '</div>' : ''));
+    if (m.querySelector('#hC')) m.querySelector('#hC').onclick = function () { m.cerrar(); formHoras(emp, d); };
+    if (m.querySelector('#hA')) m.querySelector('#hA').onclick = function () {
+      api('adminAprobarHoras', { fecha: d.fecha, usuario: d.usuario }).then(function () { m.cerrar(); aviso('Horas aprobadas', 'exito'); vHoras(); }).catch(function (e) { aviso(e.message, 'error'); });
+    };
   }
   function formHoras(emp, d) {
     d = d || { fecha: AD.hoy, entrada: '', salida: '', nota: '' };
     var m = modal('Horas de ' + esc(emp.nombre),
       '<label>Día</label><input type="date" id="hF" value="' + esc(d.fecha) + '"' + (d.fila ? ' disabled' : '') + '>' +
       '<div class="grid2"><div><label>Entrada</label><input id="hE" inputmode="numeric" placeholder="12:00" value="' + esc(d.entrada) + '"></div><div><label>Salida</label><input id="hS" inputmode="numeric" placeholder="21:00" value="' + esc(d.salida) + '"></div></div>' +
-      '<p class="gris peq">Formato 24 horas: 10:30, 22:15. Si salió después de medianoche: 24:30, 25:00.</p>' +
+      '<p class="gris peq">Formato 24 horas: 10:30, 22:15. Si salió después de medianoche: 24:30, 25:00. Al guardar, el día queda aprobado a tu nombre.</p>' +
       '<label>Nota</label><input id="hN" value="' + esc(d.nota) + '" placeholder="Ej.: olvidó marcar la salida">' +
       '<div class="acciones"><button id="hG">Guardar</button></div>');
     m.querySelector('#hG').onclick = function () {
