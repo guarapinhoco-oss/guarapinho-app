@@ -1610,7 +1610,7 @@
         '<div class="seccion-grid"><div>' +
         '<div class="tarjeta"><h2>Últimos 14 días</h2>' + barras(r.dias.map(function (x) { return { v: x.ingreso, corto: x.ingreso ? corto(x.ingreso) : '', titulo: pesos(x.ingreso) + ' · ' + x.vasos + ' vasos', fecha: x.fecha }; }), 'v', function (x) { return x.fecha.slice(8); }, function (x) { return x.fecha === r.hoy; }) + '</div>' +
         '<div class="tarjeta" style="margin-top:16px"><h2>' + (r.mes ? 'Mes de ' + nombreMes(r.mes.mes) : 'Mes actual') + '</h2><div class="kpis" style="margin:0">' +
-        kpi('Ingresos', pesos(m.ingresos), (m.vasos || 0) + ' vasos') + kpi('Costo insumos', pesos(m.costoInsumos)) + kpi('Gastos fijos', pesos(m.gastos)) +
+        kpi('Ingresos', pesos(m.ingresos), (m.vasos || 0) + ' vasos') + kpi('Insumos pagados', pesos(m.costoInsumos), m.costoReceta != null ? 'Según receta ' + pesos(m.costoReceta) : '') + kpi('Gastos fijos', pesos(m.gastos)) +
         kpi('Utilidad neta', pesos(m.utilidadNeta), 'Según Resumen Mensual', m.utilidadNeta < 0 ? 'negativo' : '') +
         kpi('Caja acumulada', pesos(m.cajaAcumulada), 'Flujo de Caja', m.cajaAcumulada < 0 ? 'negativo' : '') + '</div></div>' +
         '</div><div>' +
@@ -1838,7 +1838,7 @@
     if (!m) { $('vista').innerHTML = '<div class="vacio">El archivo todavía no tiene meses.</div>'; return; }
     $('vista').innerHTML =
       '<div class="encabezado-seccion"><h2>Mes ' + m.num + ' · ' + nombreMes(m.mes) + '</h2><select id="rMes" style="width:auto">' + r.meses.map(function (x) { return '<option value="' + x.num + '"' + (x.num === m.num ? ' selected' : '') + '>Mes ' + x.num + ' · ' + nombreMes(x.mes) + '</option>'; }).join('') + '</select></div>' +
-      '<div class="kpis">' + kpi('Ingresos', pesos(m.ingresos), m.vasos + ' vasos', 'destacado') + kpi('Costo insumos', pesos(m.costoInsumos)) + kpi('Utilidad bruta', pesos(m.utilidadBruta)) + kpi('Gastos fijos', pesos(m.gastos)) +
+      '<div class="kpis">' + kpi('Ingresos', pesos(m.ingresos), m.vasos + ' vasos', 'destacado') + kpi('Insumos pagados', pesos(m.costoInsumos), m.costoReceta != null ? 'Según receta ' + pesos(m.costoReceta) : '') + kpi('Utilidad bruta', pesos(m.utilidadBruta)) + kpi('Gastos fijos', pesos(m.gastos)) +
       kpi('Utilidad neta', pesos(m.utilidadNeta), 'Base del reparto', m.utilidadNeta < 0 ? 'negativo' : '') + '</div>' +
       '<div class="seccion-grid"><div class="tarjeta"><h2>Flujo de caja del mes</h2><div class="cuadre" style="box-shadow:none;padding:0">' +
       '<div class="l"><span>Ingreso real (efectivo + transf.)</span><span class="num">' + pesos(m.ingresoReal) + '</span></div>' +
