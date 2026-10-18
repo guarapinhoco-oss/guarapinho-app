@@ -713,6 +713,28 @@
     var a = document.activeElement; if (a && /INPUT|SELECT|TEXTAREA/.test(a.tagName)) return;
     var y = window.scrollY; VISTAS[AD.seccion](); window.scrollTo(0, y);
   }
+  /*
+   * Panel en vivo: cada 8 segundos, con el panel a la vista y con señal, se pregunta al servidor si cambió algo
+   * (una venta, un gasto, un cierre). Si cambió, todo lo guardado se marca como viejo y la pantalla abierta se
+   * vuelve a pedir y se repinta sola. Con la app en segundo plano no pregunta, para no gastar batería ni datos.
+   */
+  var VERSION_DATOS = null, PIDIENDO_VERSION = false, VIVO_MS = 8000;
+  function revisarCambios() {
+    if (!SES || SES.rol === 'OPERADOR' || !AD.seccion || !$('vista') || SIN_RED || PIDIENDO_VERSION || document.visibilityState === 'hidden') return;
+    PIDIENDO_VERSION = true;
+    llamar('adminVersion', []).then(function (v) {
+      PIDIENDO_VERSION = false;
+      var antes = VERSION_DATOS; VERSION_DATOS = v;
+      if (antes === null || antes === v) return;
+      Object.keys(GUARDADO).forEach(function (k) { if (GUARDADO[k].listo) GUARDADO[k].t = 0; });
+      // Pide de nuevo lo de la pantalla abierta; leerRapido repinta solo si llegó algo distinto.
+      var fn = Object.keys(LECTURAS).filter(function (f) { return LECTURAS[f] === AD.seccion; })[0];
+      if (fn) repintarSiSeVe(fn);
+    }, function () { PIDIENDO_VERSION = false; });
+  }
+  setInterval(revisarCambios, VIVO_MS);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') revisarCambios(); });
+
   /** Precarga en segundo plano las pestañas del panel para que abran al instante. */
   function precargarPanel() {
     var hoy = AD.hoy, mes = hoy.slice(0, 7), sem = rangoPreset('semana');
