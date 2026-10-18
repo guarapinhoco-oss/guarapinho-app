@@ -1619,10 +1619,21 @@
         '<div class="progreso ' + (avance < 100 ? 'bajo' : '') + '"><i style="width:' + avance + '%"></i></div><div class="gris peq">' + (meta ? (vHoy >= meta ? 'Meta de hoy cumplida' + (vHoy > meta ? ' (+' + (vHoy - meta) + ')' : '') : Math.round(avance) + '% · faltan ' + (meta - vHoy) + ' vasos') : 'Se calcula cuando haya gastos fijos registrados.') + '</div>' +
         (base ? '<div class="gris peq" style="margin-top:6px">Meta del mes: <b>' + metaMes.toLocaleString('es-CO') + ' vasos</b> · llevan ' + (vasosAntes + vHoy).toLocaleString('es-CO') + ' · quedan ' + diasQuedan + ' día' + (diasQuedan === 1 ? '' : 's') + '</div>' : '') +
         (r.diasTrabajados ? '<div class="gris peq">Promedio del mes: <b>' + Math.round(r.promedioVasosDia) + ' vasos/día</b> en ' + r.diasTrabajados + ' día' + (r.diasTrabajados === 1 ? '' : 's') + '</div>' : '') + '</div>' +
-        '<div class="tarjeta" style="margin-top:16px"><h2>Pendientes</h2>' + (r.alertas.length ? r.alertas.map(function (a) { return '<div class="alerta" data-tipo="' + a.tipo + '">⚠ ' + esc(a.texto) + '</div>'; }).join('') : '<div class="alerta ok">Todo al día.</div>') + '</div>' +
+        '<div class="tarjeta" style="margin-top:16px"><h2>Pendientes</h2>' + (r.alertas.length ? r.alertas.map(function (a, i) { return '<div class="alerta" data-tipo="' + a.tipo + '">⚠ <span style="flex:1">' + esc(a.texto) + (a.tipo === 'nomina' && SES.rol === 'ADMIN' ? '<br><button class="peq" data-nomina="' + i + '" style="margin-top:8px">Registrar pago de hoy</button>' : '') + '</span></div>'; }).join('') : '<div class="alerta ok">Todo al día.</div>') + '</div>' +
         '<div class="tarjeta" style="margin-top:16px"><h2>Vasos por hora · hoy</h2>' + (horas.length ? barras(horas, 'v', function (x) { return x.h + 'h'; }) : '<div class="vacio">Sin ventas hoy.</div>') + '</div>' +
         '</div></div>';
-      $$('.alerta[data-tipo]').forEach(function (a) { a.onclick = function () { ir({ turno: 'cajas', cierre: 'cajas', pagos: 'gastos', activos: 'activos', diario: 'diario' }[a.getAttribute('data-tipo')]); }; });
+      $$('.alerta[data-tipo]').forEach(function (a) { a.onclick = function () { ir({ turno: 'cajas', cierre: 'cajas', pagos: 'gastos', activos: 'activos', diario: 'diario', nomina: 'gastos' }[a.getAttribute('data-tipo')]); }; });
+      $$('[data-nomina]').forEach(function (b) {
+        b.onclick = function (e) {
+          e.stopPropagation();
+          var n = r.alertas[Number(b.getAttribute('data-nomina'))];
+          confirmar('Registrar nómina', 'Se guarda en Registro Gastos como "Nómina operadores" con fecha de hoy: ' + esc(n.descripcion) + ', ' + pesos(n.valor) + '.', 'Registrar').then(function (si) {
+            if (!si) return;
+            api('adminGuardarGasto', { fecha: r.hoy, categoria: 'Nómina operadores', descripcion: n.descripcion, valor: n.valor })
+              .then(function () { aviso('Nómina registrada', 'exito'); vInicio(); }).catch(function (e) { aviso(e.message, 'error'); });
+          });
+        };
+      });
     }).catch(fallaVista);
   }
 
