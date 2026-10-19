@@ -288,6 +288,8 @@
   .kpi.destacado { background: var(--verde-osc); color: #fff; background-image: var(--bambu); }
   .kpi.destacado span, .kpi.destacado small { color: rgba(255,255,255,.85); }
   .kpi.negativo b { color: var(--rojo); }
+  .cuadre .l span.num { white-space: nowrap; padding-left: 10px; }
+  .kpi.clic { cursor: pointer; } .kpi.clic small::after { content: " ›"; font-weight: 900; }
   .seccion-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; }
   .seccion-grid > * { min-width: 0; }
   @media (max-width: 980px) { .seccion-grid { grid-template-columns: minmax(0, 1fr); } }
@@ -1696,6 +1698,36 @@
   function fechaLarga(iso) { var p = String(iso).split('-'); return Number(p[2]) + ' ' + ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][Number(p[1]) - 1]; }
   function corto(n) { n = Number(n || 0); if (Math.abs(n) >= 1e6) return (Math.round(n / 1e5) / 10).toLocaleString('es-CO') + 'M'; if (Math.abs(n) >= 1e3) return Math.round(n / 1e3) + 'k'; return String(Math.round(n)); }
 
+  // ---------- Efectivo que debe haber ----------
+  function verEfectivo(e) {
+    var admin = SES.rol === 'ADMIN';
+    var fila = function (t, v, clase) { return '<div class="l' + (clase ? ' ' + clase : '') + '"><span>' + t + '</span><span class="num">' + v + '</span></div>'; };
+    var m = modal('Efectivo que debe haber',
+      '<div class="cuadre">' +
+      fila('Contado en los cierres', pesos(e.contado)) + fila('Menos bases sacadas para abrir caja', '−' + pesos(e.bases)) +
+      (e.entradas ? fila('Más ingresos de efectivo', pesos(e.entradas)) : '') + (e.salidas ? fila('Menos salidas registradas', '−' + pesos(e.salidas)) : '') +
+      fila('Guardado fuera de caja', pesos(e.guardado)) + (e.caja ? fila('En la caja abierta', pesos(e.caja)) : '') +
+      fila('Total que debe haber', pesos(e.total), 'total') + '</div>' +
+      (e.propinas ? '<p class="gris peq">De ese total, ' + pesos(e.propinas) + ' son propinas de los operadores. Cuando se las entregues, regístralo como salida "Propinas entregadas".</p>' : '') +
+      '<p class="gris peq">Los gastos pagados con plata de la caja ya están descontados en cada cierre. Si sacas efectivo guardado para consignar, pagar nómina, pagarle a Miguel o repartir, regístralo aquí para que el número siga cuadrando.</p>' +
+      (e.movimientos.length ? '<h3>Últimos movimientos</h3><div class="lista">' + e.movimientos.map(function (x) {
+        return '<div class="item"><div class="d"><b>' + esc(x.motivo) + '</b><span>' + fechaCorta(x.fecha).slice(0, 5) + ' ' + esc(x.hora) + ' · ' + esc(x.usuario) + (x.descripcion ? ' · ' + esc(x.descripcion) : '') + '</span></div><div class="v ' + (x.tipo === 'SALIDA' ? 'neg' : 'pos') + '">' + (x.tipo === 'SALIDA' ? '−' : '+') + pesos(x.valor) + '</div></div>';
+      }).join('') + '</div>' : '') +
+      (admin ? '<h3>Registrar movimiento</h3><div class="medios" id="eTipo"><button data-t="SALIDA" class="sel">Sale efectivo</button><button data-t="ENTRADA">Entra efectivo</button></div>' +
+        '<label>Motivo</label><select id="eMot">' + e.motivos.map(function (x) { return '<option>' + esc(x) + '</option>'; }).join('') + '</select>' +
+        '<div class="grid2"><div><label>Valor</label><input id="eVal" inputmode="numeric"></div><div><label>Detalle</label><input id="eDes" placeholder="Opcional"></div></div>' +
+        '<div class="acciones"><button id="eGuardar">Registrar</button></div>' : ''));
+    if (!admin) return;
+    var tipo = 'SALIDA';
+    campoPesos(m.querySelector('#eVal'));
+    $$('#eTipo button', m).forEach(function (b) { b.onclick = function () { tipo = b.getAttribute('data-t'); $$('#eTipo button', m).forEach(function (y) { y.classList.toggle('sel', y === b); }); m.querySelector('#eMot').value = tipo === 'ENTRADA' ? 'Ingreso de efectivo' : 'Consignación al banco'; }; });
+    m.querySelector('#eGuardar').onclick = function () {
+      var x = { tipo: tipo, motivo: m.querySelector('#eMot').value, descripcion: m.querySelector('#eDes').value.trim(), valor: numeroDe(m.querySelector('#eVal').value) };
+      if (!(x.valor > 0)) { aviso('Escribe el valor', 'error'); return; }
+      api('adminMovimientoEfectivo', x).then(function () { m.cerrar(); aviso('Movimiento registrado', 'exito'); vInicio(); }).catch(function (er) { aviso(er.message, 'error'); });
+    };
+  }
+
   // ---------- Inicio ----------
   function vInicio() {
     api('adminInicio').then(function (r) {
@@ -1722,6 +1754,7 @@
         kpi('Hoy · vendido', pesos(d.ingreso), d.vasos + ' vasos · ' + r.ventasHoy + ' ventas', 'destacado') +
         kpi('Hoy · efectivo', pesos(d.efectivo), 'Transferencias ' + pesos(d.transferencia)) +
         (r.turno ? kpi('Caja abierta', pesos(r.turno.esperado), 'Debe haber en efectivo · ' + esc(r.turno.abre)) : kpi('Caja', 'Cerrada', 'No hay turno abierto')) +
+        (r.efectivo ? '<div class="kpi clic" id="kEfectivo" role="button" tabindex="0"><span>Efectivo que debe haber</span><b class="num">' + pesos(r.efectivo.total) + '</b><small>' + (r.efectivo.caja ? 'Caja ' + pesos(r.efectivo.caja) + ' · guardado ' + pesos(r.efectivo.guardado) : 'Guardado fuera de caja') + (r.efectivo.propinas ? ' · ' + pesos(r.efectivo.propinas) + ' son propinas' : '') + '</small></div>' : '') +
         kpi('Hoy · margen', pesos(d.margen), 'Ventas menos costo de insumos') +
         '</div>' +
         '<div class="seccion-grid"><div>' +
@@ -1739,6 +1772,7 @@
         '<div class="tarjeta" style="margin-top:16px"><h2>Pendientes</h2>' + (r.alertas.length ? r.alertas.map(function (a, i) { return '<div class="alerta" data-tipo="' + a.tipo + '">⚠ <span style="flex:1">' + esc(a.texto) + (a.tipo === 'nomina' && SES.rol === 'ADMIN' ? '<br><button class="peq" data-nomina="' + i + '" style="margin-top:8px">Registrar pago de hoy</button>' : '') + '</span></div>'; }).join('') : '<div class="alerta ok">Todo al día.</div>') + '</div>' +
         '<div class="tarjeta" style="margin-top:16px"><h2>Vasos por hora · hoy</h2>' + (horas.length ? barras(horas, 'v', function (x) { return x.h + 'h'; }) : '<div class="vacio">Sin ventas hoy.</div>') + '</div>' +
         '</div></div>';
+      if ($('kEfectivo')) $('kEfectivo').onclick = function () { verEfectivo(r.efectivo); };
       $$('.alerta[data-tipo]').forEach(function (a) { a.onclick = function () { ir({ turno: 'cajas', cierre: 'cajas', pagos: 'gastos', activos: 'activos', diario: 'diario', nomina: 'gastos' }[a.getAttribute('data-tipo')]); }; });
       $$('[data-nomina]').forEach(function (b) {
         b.onclick = function (e) {
