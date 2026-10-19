@@ -1740,12 +1740,16 @@
       var vHoy = (d && d.vasos) || 0, base = eq.vasosDia || 0;
       var diasAntes = Math.max(0, (r.diasTrabajados || 0) - (vHoy > 0 ? 1 : 0)), vasosAntes = Math.max(0, ((r.mes && r.mes.vasos) || 0) - vHoy);
       var pHoy = r.hoy.split('-').map(Number), ultimoDia = new Date(Date.UTC(pHoy[0], pHoy[1], 0)).getUTCDate(), diasQuedan = ultimoDia - pHoy[2] + 1;
+      // Solo cuentan los días que se abre (los lunes no). Un servidor viejo no manda diasQuedanMes: se usa el mes calendario.
+      if (r.diasQuedanMes != null) diasQuedan = r.diasQuedanMes;
       // Con una cuota del préstamo por vencer, la meta se mide del 16 al 15 (período de la deuda), no en el mes calendario.
       var pd = r.periodoDeuda;
       if (pd) { diasAntes = pd.diasAntes; vasosAntes = pd.vasosAntes; diasQuedan = pd.dias - pd.diasAntes; }
-      var metaMes = Math.round(base * (diasAntes + diasQuedan));
+      // En el período de la deuda la meta total son los vasos que pide la hoja para ese mes; si no, base × días abiertos.
+      var metaMes = Math.round(pd && eq.vasosMes ? eq.vasosMes : base * (diasAntes + diasQuedan));
       // Nunca baja de la meta base: lo vendido de más queda como ganancia o adelanta la deuda (Samuel, 17 oct 2026).
-      var meta = base ? Math.max(Math.round(base), Math.ceil((metaMes - vasosAntes) / diasQuedan)) : 0, arrastre = meta - Math.round(base);
+      var meta = base ? Math.max(Math.round(base), Math.ceil((metaMes - vasosAntes) / Math.max(1, diasQuedan))) : 0, arrastre = meta - Math.round(base);
+      var cerradoHoy = r.hoyAbierto === false && !vHoy;
       var avance = meta ? Math.min(100, vHoy / meta * 100) : 0;
       var horas = Object.keys(r.porHora).sort().map(function (h) { return { h: h, v: r.porHora[h], corto: r.porHora[h] }; });
       cuenta('cajas', r.alertas.filter(function (a) { return a.tipo === 'cierre' || a.tipo === 'turno'; }).length);
@@ -1765,9 +1769,9 @@
         kpi('Caja acumulada', pesos(m.cajaAcumulada), 'Flujo de Caja', m.cajaAcumulada < 0 ? 'negativo' : '') + '</div></div>' +
         '</div><div>' +
         '<div class="tarjeta"><h2>Punto de equilibrio</h2><p class="gris peq" style="margin-top:-6px">' + (pd ? 'Incluye costos fijos y ' + (pd.cuotas > 1 ? 'la cuota ' + pd.cuota + ' de ' + pd.cuotas : 'el pago completo') + ' del préstamo de Miguel, que vence el ' + fechaLarga(pd.pago) + '. Se mide del ' + fechaLarga(pd.desde) + ' al ' + fechaLarga(pd.hasta) + '.' : r.equilibrioConPrestamo ? 'Incluye costos fijos y el pago completo del préstamo de Miguel' + (r.primerCuotaMes && r.primerCuotaMes > r.hoy.slice(0, 7) ? ' (se paga en ' + nombreMes(r.primerCuotaMes) + ')' : '') + '.' : 'Costos fijos promedio, sin préstamo.') + '</p>' +
-        '<div class="fila"><div><div class="gris peq">Meta de hoy</div><b style="font-size:24px">' + meta + ' vasos</b>' + (diasAntes && arrastre > 0 ? '<div class="gris peq">' + Math.round(base) + ' + ' + arrastre + ' por lo que faltó' + '</div>' : '') + '</div><div><div class="gris peq">Vendidos hoy</div><b style="font-size:24px">' + vHoy + '</b></div></div>' +
+        '<div class="fila"><div><div class="gris peq">' + (cerradoHoy ? 'Hoy no se abre · meta del próximo día' : 'Meta de hoy') + '</div><b style="font-size:24px">' + meta + ' vasos</b>' + (diasAntes && arrastre > 0 ? '<div class="gris peq">' + Math.round(base) + ' + ' + arrastre + ' por lo que faltó' + '</div>' : '') + '</div><div><div class="gris peq">Vendidos hoy</div><b style="font-size:24px">' + vHoy + '</b></div></div>' +
         '<div class="progreso ' + (avance < 100 ? 'bajo' : '') + '"><i style="width:' + avance + '%"></i></div><div class="gris peq">' + (meta ? (vHoy >= meta ? 'Meta de hoy cumplida' + (vHoy > meta ? ' (+' + (vHoy - meta) + ')' : '') : Math.round(avance) + '% · faltan ' + (meta - vHoy) + ' vasos') : 'Se calcula cuando haya gastos fijos registrados.') + '</div>' +
-        (base ? '<div class="gris peq" style="margin-top:6px">' + (pd ? 'Meta para la cuota del ' + fechaLarga(pd.pago) : 'Meta del mes') + ': <b>' + metaMes.toLocaleString('es-CO') + ' vasos</b> · llevan ' + (vasosAntes + vHoy).toLocaleString('es-CO') + ' · quedan ' + diasQuedan + ' día' + (diasQuedan === 1 ? '' : 's') + '</div>' : '') +
+        (base ? '<div class="gris peq" style="margin-top:6px">' + (pd ? 'Meta para la cuota del ' + fechaLarga(pd.pago) : 'Meta del mes') + ': <b>' + metaMes.toLocaleString('es-CO') + ' vasos</b> · llevan ' + (vasosAntes + vHoy).toLocaleString('es-CO') + ' · quedan ' + diasQuedan + ' día' + (diasQuedan === 1 ? '' : 's') + ' abierto' + (diasQuedan === 1 ? '' : 's') + ' (sin lunes)</div>' : '') +
         (r.diasTrabajados ? '<div class="gris peq">Promedio del mes: <b>' + Math.round(r.promedioVasosDia) + ' vasos/día</b> en ' + r.diasTrabajados + ' día' + (r.diasTrabajados === 1 ? '' : 's') + '</div>' : '') + '</div>' +
         '<div class="tarjeta" style="margin-top:16px"><h2>Pendientes</h2>' + (r.alertas.length ? r.alertas.map(function (a, i) { return '<div class="alerta" data-tipo="' + a.tipo + '">⚠ <span style="flex:1">' + esc(a.texto) + (a.tipo === 'nomina' && SES.rol === 'ADMIN' ? '<br><button class="peq" data-nomina="' + i + '" style="margin-top:8px">Registrar pago de hoy</button>' : '') + '</span></div>'; }).join('') : '<div class="alerta ok">Todo al día.</div>') + '</div>' +
         '<div class="tarjeta" style="margin-top:16px"><h2>Vasos por hora · hoy</h2>' + (horas.length ? barras(horas, 'v', function (x) { return x.h + 'h'; }) : '<div class="vacio">Sin ventas hoy.</div>') + '</div>' +
