@@ -157,6 +157,44 @@
   .op-barra button.icono { background: rgba(255,255,255,.16); border: none; width: 38px; height: 38px; padding: 0; border-radius: 12px; }
   .op-cuerpo { max-width: 980px; margin: 0 auto; padding: 14px; }
   .productos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  /* Fila de pedidos (comanda) */
+  .fila-aviso { display: flex; width: 100%; align-items: center; gap: 10px; text-align: left; background: var(--amarillo-claro); color: var(--texto); border: 1.5px solid var(--amarillo); border-radius: 14px; padding: 10px 12px; margin: 0 0 14px; }
+  .fila-aviso:hover { background: var(--amarillo-claro); border-color: var(--amarillo-osc); }
+  .fila-aviso span { flex: 1; min-width: 0; } .fila-aviso b { display: block; font-size: 15px; }
+  .fila-aviso small { display: block; font-weight: 700; color: var(--ambar); font-size: 12px; }
+  .fila-aviso em { font-style: normal; font-weight: 800; color: var(--verde-osc); background: #fff; border: 1.5px solid var(--verde-borde); border-radius: 10px; padding: 8px 12px; white-space: nowrap; }
+  .fila-aviso.rojo { background: var(--rojo-claro); border-color: #f0b8ad; } .fila-aviso.rojo small { color: var(--rojo); }
+  .colores { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 4px 0; }
+  .colores.compacto { display: flex; overflow-x: auto; gap: 4px; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+  .colores .color { flex-direction: column; gap: 3px; background: none; border: none; color: var(--texto); padding: 4px 2px; font-size: 11px; font-weight: 800; }
+  .colores .color:hover { background: none; }
+  .colores .color i { width: 40px; height: 40px; border-radius: 50%; border: 2px solid rgba(0,0,0,.15); display: block; }
+  .colores.compacto .color { flex: 0 0 auto; min-width: 54px; } .colores.compacto .color i { width: 34px; height: 34px; }
+  .colores .color.sel i { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--verde); }
+  .palabras { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+  .palabras button { padding: 7px 12px; font-size: 13px; border-radius: 99px; }
+  .palabras button.sel { background: var(--verde); color: #fff; border-color: var(--verde); }
+  .sena-cobro { border-top: 1px solid var(--borde); border-bottom: 1px solid var(--borde); margin: 10px 0 4px; padding: 2px 0 10px; }
+  .vista-ref { margin: 12px 0 4px; padding: 12px; border-radius: 12px; background: var(--verde-claro); text-align: center; font-weight: 900; font-size: 18px; color: var(--verde-osc); }
+  .vista-ref small { display: block; font-size: 12px; color: var(--gris); font-weight: 700; }
+  .comanda h3 { margin: 4px 0 8px; font-size: 15px; display: flex; justify-content: space-between; }
+  .comanda h3.rojo { color: var(--rojo); }
+  .tk { background: #fff; border-radius: 16px; box-shadow: var(--sombra); border-left: 8px solid var(--verde); padding: 12px; margin: 0 0 10px; display: grid; gap: 6px; cursor: pointer; }
+  .tk.amb { border-left-color: #f0a400; } .tk.roj { border-left-color: var(--rojo); } .tk.serv { border-left-color: var(--azul); }
+  .tk .cab { display: flex; align-items: center; gap: 10px; }
+  .tk .n { font-size: 22px; font-weight: 900; color: var(--verde-osc); min-width: 46px; }
+  .tk .ref { flex: 1; min-width: 0; font-weight: 900; font-size: 16px; line-height: 1.15; } .tk .ref small { display: block; font-weight: 700; font-size: 12px; color: var(--gris); }
+  .tk .min { font-weight: 900; font-size: 14px; padding: 3px 9px; border-radius: 99px; background: var(--verde-claro); color: var(--verde-osc); white-space: nowrap; }
+  .tk.amb .min { background: var(--ambar-claro); color: var(--ambar); } .tk.roj .min { background: var(--rojo-claro); color: var(--rojo); } .tk.serv .min { background: var(--azul-claro); color: var(--azul); }
+  .tk ul { margin: 0; padding: 0; list-style: none; font-weight: 800; font-size: 15px; } .tk li small { color: var(--gris); font-weight: 700; }
+  .tk .est { display: flex; gap: 6px; flex-wrap: wrap; } .tk .est span { font-size: 12px; font-weight: 900; padding: 2px 9px; border-radius: 99px; }
+  .ok-p { background: var(--verde-claro); color: var(--verde-osc); } .no-p { background: var(--rojo-claro); color: var(--rojo); } .sv-p { background: var(--azul-claro); color: var(--azul); }
+  .tk .acc { display: flex; gap: 8px; } .tk .acc:empty { display: none; } .tk .acc button { flex: 1; padding: 11px 10px; font-size: 15px; }
+  .motivos { display: grid; gap: 8px; margin: 8px 0; } .motivos button { justify-content: flex-start; text-align: left; }
+  .motivos button.sel { background: var(--rojo-claro); border-color: var(--rojo); color: var(--rojo); }
+  .resumen-fila { border: 1px solid var(--borde); border-radius: 12px; padding: 4px 12px; margin: 10px 0; }
+  .resumen-fila .l { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--borde); font-weight: 800; }
+  .resumen-fila .l:last-child { border: none; } .resumen-fila small { display: block; color: var(--gris); font-weight: 700; font-size: 12px; }
   .por-cobrar { margin: 0 0 14px; }
   .por-cobrar h3 { margin: 0 0 8px; font-size: 15px; }
   .por-cobrar .chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
@@ -589,6 +627,7 @@
       cierre: s('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'),
       reloj: s('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
       lista: s('<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>'),
+      fila: s('<rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h4M7 17h4"/>'),
       mas: s('<path d="M12 5v14M5 12h14"/>'),
       hoja: s('<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>'),
       imprimir: s('<path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>'),
@@ -982,10 +1021,11 @@
       '<div class="carrito" id="carrito"></div>' +
       '<nav class="nav-op" id="navOp">' +
       '<button data-tab="vender">' + ICON.vender + 'Vender</button>' +
+      '<button data-tab="fila">' + ICON.fila + '<span>Fila</span></button>' +
       '<button data-tab="ventas">' + ICON.lista + '<span>Ventas</span></button>' +
       '<button data-tab="gastos">' + ICON.gastos + 'Gastos</button>' +
       '<button data-tab="cierre">' + ICON.cierre + 'Cierre</button></nav>';
-    $('btnSalir').onclick = function () { confirmar('Salir', '¿Cerrar la sesión de ' + esc(SES.nombre) + '? La caja sigue abierta.' + (PED.length ? ' Hay <b>' + PED.length + ' pedido(s) por cobrar</b>: quedan guardados en este celular.' : '') + (cola().length ? ' Hay ' + cola().length + ' movimiento(s) por enviar: se envían cuando vuelva a entrar con internet.' : ''), 'Salir').then(function (s) { if (s) cerrarSesion(false); }); };
+    $('btnSalir').onclick = function () { confirmar('Salir', '¿Cerrar la sesión de ' + esc(SES.nombre) + '? La caja sigue abierta.' + (PED.length ? ' Hay <b>' + PED.length + ' pedido(s) en la fila</b>: quedan guardados en este celular.' : '') + (cola().length ? ' Hay ' + cola().length + ' movimiento(s) por enviar: se envían cuando vuelva a entrar con internet.' : ''), 'Salir').then(function (s) { if (s) cerrarSesion(false); }); };
     if ($('btnAdmin')) $('btnAdmin').onclick = function () { guardarLocal('gp_vista', 'panel'); panelAdmin(); };
     $$('#navOp button').forEach(function (b) { b.onclick = function () { opIr(b.getAttribute('data-tab')); }; });
     OP.carrito = leerLocal('gp_carrito') || [];
@@ -1143,8 +1183,13 @@
   function repintarOp() {
     if (!$('opVista') || document.querySelector('.velo-modal')) return;
     var a = document.activeElement; if (a && /INPUT|SELECT|TEXTAREA/.test(a.tagName) && $('opVista').contains(a)) return;
+    pintarTab();
+  }
+  /** Repinta la pestaña abierta aunque un cuadro se esté cerrando. */
+  function pintarTab() {
+    if (!$('opVista')) return;
     if (!OP.turno && OP.tab !== 'ventas') { pintarAbrirCaja(); pintarCarrito(); return; }
-    ({ vender: pintarVender, ventas: pintarVentasTurno, gastos: pintarGastosCaja, cierre: pintarCierre })[OP.tab]();
+    ({ vender: pintarVender, fila: pintarFila, ventas: pintarVentasTurno, gastos: pintarGastosCaja, cierre: pintarCierre })[OP.tab]();
     pintarCarrito();
   }
 
@@ -1154,8 +1199,8 @@
     el.innerHTML = (SIN_RED ? '<span class="sin-red">Sin señal</span>' : '') + (t ? 'Vendido en caja<b>' + pesos(t.total) + '</b>' : 'Caja cerrada');
     var nav = $$('#navOp button[data-tab="ventas"]')[0];
     if (nav) nav.innerHTML = ICON.lista + '<span>Ventas</span>' + (pend ? '<span class="badge">' + pend + '</span>' : '');
-    var nv = $$('#navOp button[data-tab="vender"]')[0];
-    if (nv) nv.innerHTML = ICON.vender + 'Vender' + (PED.length ? '<span class="badge">' + PED.length + '</span>' : '');
+    var nf = $$('#navOp button[data-tab="fila"]')[0];
+    if (nf) nf.innerHTML = ICON.fila + '<span>Fila</span>' + (PED.length ? '<span class="badge">' + PED.length + '</span>' : '');
   }
 
   function opIr(tab) {
@@ -1163,7 +1208,7 @@
     $$('#navOp button').forEach(function (b) { b.classList.toggle('activo', b.getAttribute('data-tab') === tab); });
     window.scrollTo(0, 0);
     if (!OP.turno && tab !== 'ventas') { pintarAbrirCaja(); pintarCarrito(); return; }
-    ({ vender: pintarVender, ventas: pintarVentasTurno, gastos: pintarGastosCaja, cierre: pintarCierre })[tab]();
+    ({ vender: pintarVender, fila: pintarFila, ventas: pintarVentasTurno, gastos: pintarGastosCaja, cierre: pintarCierre })[tab]();
     pintarCarrito();
     // Ventas, gastos y cierre se muestran con lo guardado y se actualizan con lo que hayan registrado otros celulares.
     if (tab !== 'vender') refrescarCaja().catch(function () {});
@@ -1180,6 +1225,7 @@
     $('btnAbrir').onclick = function () {
       if ($('base').value.trim() === '') { aviso('Escriba la base (puede ser 0)', 'error'); return; }
       agregarCola({ tipo: 'abrir', id: idNuevo('L'), base: numeroDe($('base').value), local: { fecha: hoyISO(), hora: hora24() } });
+      filaReiniciar();
       aviso('Caja abierta. ¡A vender!', 'exito'); opIr('vender');
       enviarCola();
     };
@@ -1209,77 +1255,224 @@
     pintarPorCobrar();
   }
 
-  // ---------- Pedidos por cobrar ----------
-  // Quedan guardados en este celular (no se borran al salir) hasta que se cobran o se eliminan. PED se lee al inicio del script.
-  function guardarPedidos() { guardarLocal('gp_pedidos', PED); pintarEstadoCaja(); }
+  // ---------- Fila de pedidos (comanda) ----------
+  // Cada pedido entra a la fila apenas se toma, con un número del turno y la seña del cliente (camiseta + una palabra).
+  // Servido y cobrado son marcas aparte: sale de la fila solo con las dos, o cancelado con motivo. Todo queda en este
+  // celular (PED = en la fila, FH = ya terminados en este turno) y el resumen viaja al servidor en la nota del cierre.
+  var FH = leerLocal('gp_fila_hist') || [];
+  var COLORES = [['Roja', '#d62f2f'], ['Negra', '#1d1d1d'], ['Blanca', '#ffffff'], ['Azul', '#2457c5'], ['Verde', '#2e9b45'], ['Amarilla', '#ffd21f'], ['Gris', '#9aa3a0'], ['Rosada', '#f28bb8'], ['Naranja', '#f57c1f'], ['Café', '#7a4b2a']];
+  var PALABRAS = ['Señor', 'Señora', 'Joven', 'Niño', 'Niña', 'Pareja', 'Gorra', 'Gafas', 'Moto', 'Perro'];
+  var MOTIVOS = ['Se equivocó al tomarlo', 'El cliente cambió de idea', 'Se fue sin pagar', 'Otro'];
+  function guardarFH() { guardarLocal('gp_fila_hist', FH); }
+  function filaNum() { var n = (Number(leerLocal('gp_fila_num')) || 0) + 1; guardarLocal('gp_fila_num', n); return n; }
+  function filaReiniciar() { if (PED.length) return; FH = []; guardarFH(); guardarLocal('gp_fila_num', 0); }
+  function guardarPedidos() {
+    PED.forEach(function (x) { if (!x.num) x.num = filaNum(); }); // pedidos guardados antes de la fila
+    guardarLocal('gp_pedidos', PED); pintarEstadoCaja();
+  }
   function pedidoActivo() { return OP.pedidoActivo ? PED.filter(function (x) { return x.id === OP.pedidoActivo; })[0] || null : null; }
   function totalItems(items) { return items.reduce(function (a, it) { var p = buscarProducto(it.producto); return a + (p ? p.precio * it.cantidad : 0); }, 0); }
   function minutosDesde(ms) { return Math.max(0, Math.floor((Date.now() - ms) / 60000)); }
+  function horaDe(ms) { return new Date(ms).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Bogota' }); }
+  function nombrePedido(x) { return '#' + (x.num || '?') + (x.nombre ? ' · ' + x.nombre : ''); }
+  function sinCobrar() { return PED.filter(function (x) { return !x.cobrado; }); }
+  /** Orden de atención: primero lo servido que falta cobrar, después lo que falta servir, del más viejo al más nuevo. */
+  function filaOrden() {
+    var serv = PED.filter(function (x) { return x.servido; }).sort(function (a, b) { return a.servido - b.servido; });
+    var pend = PED.filter(function (x) { return !x.servido; }).sort(function (a, b) { return a.creado - b.creado; });
+    return { serv: serv, pend: pend };
+  }
 
-  /** Guarda el carrito; si es un pedido por cobrar, el pedido se actualiza al mismo tiempo. */
+  /** Guarda el carrito; si es un pedido de la fila sin cobrar, el pedido se actualiza al mismo tiempo. */
   function guardarCarrito() {
     guardarLocal('gp_carrito', OP.carrito);
     var pa = pedidoActivo();
-    if (pa && OP.carrito.length) { pa.items = JSON.parse(JSON.stringify(OP.carrito)); guardarPedidos(); }
+    if (pa && !pa.cobrado && OP.carrito.length) { pa.items = JSON.parse(JSON.stringify(OP.carrito)); guardarPedidos(); }
   }
   function soltarCarrito() { OP.carrito = []; OP.pedidoActivo = null; guardarLocal('gp_carrito', []); borrarLocal('gp_pedido_activo'); }
   function quitarPedido(id) { if (!id) return; PED = PED.filter(function (x) { return x.id !== id; }); guardarPedidos(); }
-
-  function guardarPedido() {
-    if (OP.pedidoActivo) { soltarCarrito(); aviso('Pedido actualizado. Sigue por cobrar.', 'exito'); pintarVender(); pintarCarrito(); return; }
-    var ocupadas = PED.map(function (x) { return x.nombre; });
-    var mesas = ['Mesa 1', 'Mesa 2', 'Mesa 3', 'Mesa 4', 'Mesa 5', 'Mesa 6'];
-    var m = modal('Dejar por cobrar', '<p class="gris" style="margin-top:0">' + pesos(totalCarrito()) + ' · ' + vasosCarrito() + ' vaso(s). ¿De quién es?</p>' +
-      '<div class="mesas">' + mesas.map(function (x) { return '<button class="sec" data-mesa="' + x + '"' + (ocupadas.indexOf(x) >= 0 ? ' disabled' : '') + '>' + x + '</button>'; }).join('') + '</div>' +
-      '<label for="mPedNom">O escriba un nombre</label><input id="mPedNom" maxlength="30" placeholder="Ej: Señora de gorra roja">' +
-      '<div class="acciones"><button class="amarillo" id="mPedOk">Guardar</button></div>');
-    var ok = function (nombre) {
-      nombre = String(nombre || '').trim().slice(0, 30) || ('Pedido ' + (PED.length + 1));
-      PED.push({ id: idNuevo('P'), nombre: nombre, items: JSON.parse(JSON.stringify(OP.carrito)), creado: Date.now(), usuario: SES.usuario });
-      soltarCarrito(); guardarPedidos(); m.cerrar(); vibrar(15);
-      aviso(nombre + ' quedó por cobrar', 'exito'); pintarVender(); pintarCarrito();
-    };
-    $$('[data-mesa]', m).forEach(function (b) { b.onclick = function () { ok(b.getAttribute('data-mesa')); }; });
-    m.querySelector('#mPedOk').onclick = function () { ok(m.querySelector('#mPedNom').value); };
-    m.querySelector('#mPedNom').onkeydown = function (e) { if (e.key === 'Enter') ok(this.value); };
+  /** Saca el pedido de la fila y lo deja en el historial del turno (para el resumen del cierre). */
+  function terminarPedido(x, extra) {
+    FH.push(Object.assign({ num: x.num, nombre: x.nombre, creado: x.creado, servido: x.servido || null, cobrado: x.cobrado || null, directo: !!x.directo }, extra || {}));
+    guardarFH(); quitarPedido(x.id);
   }
 
+  // Selector de la seña del cliente: un color de camiseta y una palabra, más una seña escrita opcional.
+  function htmlSena(compacto) {
+    return '<label>Color de camiseta</label><div class="colores' + (compacto ? ' compacto' : '') + '">' + COLORES.map(function (c) {
+      return '<button type="button" class="color" data-color="' + c[0] + '" aria-label="Camiseta ' + c[0].toLowerCase() + '"><i style="background:' + c[1] + '"></i>' + c[0] + '</button>';
+    }).join('') + '</div><label>¿Quién?</label><div class="palabras">' + PALABRAS.map(function (w) { return '<button type="button" class="sec" data-palabra="' + w + '">' + w + '</button>'; }).join('') + '</div>' +
+      '<input class="sena-otra" maxlength="30" placeholder="Otra seña (opcional): ej. bolso morado">';
+  }
+  function activarSena(m, alCambiar) {
+    var st = { color: '', palabra: '' };
+    var tocar = function (sel, k, attr) {
+      $$(sel, m).forEach(function (b) {
+        b.onclick = function () { var v = b.getAttribute(attr); st[k] = st[k] === v ? '' : v; $$(sel, m).forEach(function (x) { x.classList.toggle('sel', x.getAttribute(attr) === st[k]); }); alCambiar(); };
+      });
+    };
+    tocar('[data-color]', 'color', 'data-color'); tocar('[data-palabra]', 'palabra', 'data-palabra');
+    m.querySelector('.sena-otra').addEventListener('input', alCambiar);
+    return function () {
+      var p = [];
+      if (st.color) p.push('Camiseta ' + st.color.toLowerCase());
+      if (st.palabra) p.push(st.palabra.toLowerCase());
+      var o = m.querySelector('.sena-otra').value.trim(); if (o) p.push(o);
+      return p.join(' · ').slice(0, 60);
+    };
+  }
+
+  /** "A la fila": guarda el carrito como pedido con su número y la seña del cliente. Si se está editando uno, lo actualiza. */
+  function guardarPedido() {
+    if (OP.pedidoActivo) { var pa = pedidoActivo(); soltarCarrito(); aviso((pa ? nombrePedido(pa) : 'Pedido') + ' actualizado. Sigue en la fila.', 'exito'); pintarVender(); pintarCarrito(); return; }
+    var num = (Number(leerLocal('gp_fila_num')) || 0) + 1;
+    var m = modal('¿Quién es? · Pedido #' + num, '<p class="gris peq" style="margin-top:0">' + vasosCarrito() + ' vaso(s) · ' + pesos(totalCarrito()) + '. Toque el color de la camiseta y una palabra.</p>' + htmlSena(false) +
+      '<div class="vista-ref"><small>Así sale en la fila</small><span id="mRef">#' + num + '</span></div>' +
+      '<div class="acciones"><button class="sec" id="mSinSena">Sin seña</button><button class="amarillo" id="mPedOk">Enviar a la fila</button></div>');
+    var leer = activarSena(m, function () { var r = leer(); m.querySelector('#mRef').textContent = '#' + num + (r ? ' · ' + r : ''); });
+    var ok = function (ref) {
+      var x = { id: idNuevo('P'), num: filaNum(), nombre: ref, items: JSON.parse(JSON.stringify(OP.carrito)), creado: Date.now(), usuario: SES.usuario, servido: null, cobrado: null };
+      PED.push(x); soltarCarrito(); guardarPedidos(); m.cerrar(); vibrar(15);
+      aviso(nombrePedido(x) + ' quedó en la fila', 'exito'); pintarVender(); pintarCarrito();
+    };
+    m.querySelector('#mPedOk').onclick = function () { ok(leer()); };
+    m.querySelector('#mSinSena').onclick = function () { ok(''); };
+  }
+
+  /** Aviso arriba de Vender: cuántos hay en la fila y cuál lleva más tiempo esperando. */
   function pintarPorCobrar() {
     var el = $('porCobrar'); if (!el) return;
     if (!PED.length || !OP.turno) { el.innerHTML = ''; return; }
-    el.innerHTML = '<div class="por-cobrar"><h3>Por cobrar (' + PED.length + ')</h3><div class="chips">' + PED.map(function (x) {
-      var min = minutosDesde(x.creado);
-      return '<button class="ped' + (min >= 45 ? ' viejo' : '') + (x.id === OP.pedidoActivo ? ' activo' : '') + '" data-ped="' + esc(x.id) + '"><b>' + esc(x.nombre) + '</b><span class="num">' + pesos(totalItems(x.items)) + '</span><small>' + (min < 1 ? 'recién' : 'hace ' + min + ' min') + '</small></button>';
-    }).join('') + '</div></div>';
-    $$('[data-ped]', el).forEach(function (b) { b.onclick = function () { abrirPedido(b.getAttribute('data-ped')); }; });
+    var f = filaOrden(), primero = f.serv[0] || f.pend[0];
+    var min = minutosDesde(primero.servido && !primero.cobrado ? primero.servido : primero.creado);
+    el.innerHTML = '<button class="fila-aviso' + (min >= 10 ? ' rojo' : '') + '" id="verFila"><span><b>' + PED.length + ' pedido' + (PED.length === 1 ? '' : 's') + ' en la fila</b>' +
+      '<small>' + (f.serv.length ? 'Falta cobrar ' + esc(nombrePedido(f.serv[0])) : 'Sigue ' + esc(nombrePedido(primero)) + ' · ' + min + ' min') + '</small></span><em>Ver fila</em></button>';
+    $('verFila').onclick = function () { opIr('fila'); };
   }
-  setInterval(function () { if (OP.tab === 'vender' && !document.querySelector('.velo-modal')) pintarPorCobrar(); }, 60000);
+  setInterval(function () {
+    if (document.querySelector('.velo-modal')) return;
+    if (OP.tab === 'vender') pintarPorCobrar(); else if (OP.tab === 'fila' && OP.turno) pintarFila();
+  }, 30000);
+
+  function tarjetaPedido(x) {
+    var serv = !!x.servido, min = minutosDesde(serv ? x.servido : x.creado);
+    var cls = serv ? 'serv' : min >= 10 ? 'roj' : min >= 5 ? 'amb' : '';
+    var items = x.items.map(function (it) { return '<li>' + it.cantidad + ' × ' + esc(it.producto) + (it.opcion ? ' <small>· ' + esc(it.opcion) + '</small>' : '') + '</li>'; }).join('');
+    var est = (serv ? '<span class="sv-p">Servido ✓</span>' : '') +
+      (x.cobrado ? '<span class="ok-p">Cobrado · ' + (x.cobrado.medio === 'TRANSFERENCIA' ? 'transferencia' : 'efectivo') + '</span>' : '<span class="no-p">Sin cobrar · ' + pesos(totalItems(x.items)) + '</span>');
+    var acc = (!x.cobrado ? '<button class="' + (serv ? 'amarillo' : 'sec') + '" data-cobrar="' + esc(x.id) + '">Cobrar' + (serv ? ' ' + pesos(totalItems(x.items)) : '') + '</button>' : '') +
+      (!serv ? '<button data-servido="' + esc(x.id) + '">✓ Servido</button>' : '');
+    return '<div class="tk ' + cls + '" data-tk="' + esc(x.id) + '"><div class="cab"><span class="n">#' + x.num + '</span><span class="ref">' + (x.nombre ? esc(x.nombre) : 'Sin seña') +
+      '<small>' + (serv ? 'Servido ' + horaDe(x.servido) : 'Tomado ' + horaDe(x.creado)) + '</small></span><span class="min">' + min + ' min</span></div>' +
+      '<ul>' + items + '</ul><div class="est">' + est + '</div><div class="acc">' + acc + '</div></div>';
+  }
+
+  function pintarFila() {
+    var f = filaOrden();
+    $('opVista').innerHTML = '<div class="comanda">' + (!PED.length
+      ? '<div class="vacio"><b>No hay pedidos en la fila.</b><br>Tome el pedido en Vender y toque "A la fila".</div>'
+      : (f.serv.length ? '<h3 class="rojo"><span>Servidos · falta cobrar</span><span>' + f.serv.length + '</span></h3>' + f.serv.map(tarjetaPedido).join('') : '') +
+        (f.pend.length ? '<h3><span>Por servir · en orden</span><span>' + f.pend.length + '</span></h3>' + f.pend.map(tarjetaPedido).join('') : '') +
+        '<p class="gris peq">Verde: menos de 5 min · Amarillo: 5 a 10 · Rojo: más de 10. Toque un pedido para agregarle, cambiarlo o cancelarlo.</p>') + '</div>';
+    $$('[data-servido]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); marcarServido(b.getAttribute('data-servido')); }; });
+    $$('[data-cobrar]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); cobrarPedido(b.getAttribute('data-cobrar')); }; });
+    $$('[data-tk]').forEach(function (t) { t.onclick = function () { abrirPedido(t.getAttribute('data-tk')); }; });
+  }
+
+  function marcarServido(id) {
+    var x = PED.filter(function (y) { return y.id === id; })[0]; if (!x) return;
+    x.servido = Date.now(); vibrar(20);
+    if (x.cobrado) { terminarPedido(x); aviso(nombrePedido(x) + ' entregado', 'exito'); }
+    else { guardarPedidos(); aviso(nombrePedido(x) + ' servido. Falta cobrarlo.', 'error'); }
+    if (OP.pedidoActivo === id) soltarCarrito();
+    pintarTab();
+  }
+
+  /** Carga el pedido en el carrito para cobrarlo o agregarle productos. */
+  function cargarPedido(x) {
+    if (OP.carrito.length && OP.pedidoActivo !== x.id) {
+      if (!OP.pedidoActivo) { aviso('Primero cobre o mande a la fila el pedido que está armando.', 'error'); return false; }
+      soltarCarrito();
+    }
+    OP.carrito = JSON.parse(JSON.stringify(x.items)); OP.pedidoActivo = x.id;
+    guardarLocal('gp_carrito', OP.carrito); guardarLocal('gp_pedido_activo', x.id);
+    return true;
+  }
+  function cobrarPedido(id) {
+    var x = PED.filter(function (y) { return y.id === id; })[0]; if (!x || x.cobrado) return;
+    if (!cargarPedido(x)) return;
+    setTimeout(cobrar, 50);
+  }
 
   function abrirPedido(id) {
     var x = PED.filter(function (y) { return y.id === id; })[0]; if (!x) return;
-    var cargar = function () {
-      if (OP.carrito.length && OP.pedidoActivo !== id) {
-        if (!OP.pedidoActivo) { aviso('Primero cobre o deje por cobrar el pedido que está armando.', 'error'); return false; }
-        soltarCarrito();
-      }
-      OP.carrito = JSON.parse(JSON.stringify(x.items)); OP.pedidoActivo = id;
-      guardarLocal('gp_carrito', OP.carrito); guardarLocal('gp_pedido_activo', id);
-      return true;
-    };
-    var m = modal(x.nombre, '<p class="gris" style="margin-top:0">Pedido hace ' + minutosDesde(x.creado) + ' min · ' + esc(x.usuario) + '</p>' +
+    var m = modal(nombrePedido(x), '<p class="gris" style="margin-top:0">Tomado ' + horaDe(x.creado) + ' (hace ' + minutosDesde(x.creado) + ' min)' + (x.servido ? ' · servido ' + horaDe(x.servido) : '') + (x.cobrado ? ' · cobrado' : '') + '</p>' +
       '<div class="lista">' + x.items.map(function (it) { var p = buscarProducto(it.producto); return '<div class="item"><div class="d"><b>' + it.cantidad + '× ' + esc(it.producto) + '</b>' + (it.opcion ? '<span>' + esc(it.opcion) + '</span>' : '') + '</div><div class="v">' + pesos(p ? p.precio * it.cantidad : 0) + '</div></div>'; }).join('') + '</div>' +
       '<div class="linea-carrito" style="border:none"><div class="d"><b>Total</b></div><b class="total-grande" style="font-size:24px">' + pesos(totalItems(x.items)) + '</b></div>' +
-      '<div class="acciones"><button class="peligro" id="mPedDel">Eliminar</button><button class="sec" id="mPedMas">Agregar más</button><button class="amarillo" id="mPedCob">Cobrar</button></div>');
-    m.querySelector('#mPedCob').onclick = function () { if (!cargar()) return; m.cerrar(); pintarVender(); pintarCarrito(); setTimeout(cobrar, 220); };
-    m.querySelector('#mPedMas').onclick = function () { if (!cargar()) return; m.cerrar(); pintarVender(); pintarCarrito(); aviso('Agregue productos a ' + x.nombre, 'exito'); };
-    m.querySelector('#mPedDel').onclick = function () {
-      m.cerrar();
-      confirmar('Eliminar pedido', '¿Eliminar <b>' + esc(x.nombre) + '</b> sin cobrarlo? Úselo solo si el cliente no lo recibió.', 'Eliminar', true).then(function (s) {
-        if (!s) return;
-        if (OP.pedidoActivo === id) soltarCarrito();
-        quitarPedido(id); pintarVender(); pintarCarrito();
-      });
+      (x.cobrado
+        ? '<p class="gris peq">Ya está cobrado: no se puede cambiar. Si piden algo más, tómelo como un pedido nuevo.</p><div class="acciones">' + (!x.servido ? '<button id="mPedServ">✓ Servido</button>' : '') + '</div>'
+        : '<div class="acciones"><button class="peligro" id="mPedDel">Cancelar</button><button class="sec" id="mPedMas">Agregar más</button><button class="amarillo" id="mPedCob">Cobrar</button></div>'));
+    if (x.cobrado) { var bs = m.querySelector('#mPedServ'); if (bs) bs.onclick = function () { m.cerrar(); marcarServido(id); }; return; }
+    m.querySelector('#mPedCob').onclick = function () { if (!cargarPedido(x)) return; m.cerrar(); setTimeout(cobrar, 220); };
+    m.querySelector('#mPedMas').onclick = function () { if (!cargarPedido(x)) return; m.cerrar(); opIr('vender'); aviso('Agregue productos a ' + nombrePedido(x), 'exito'); };
+    m.querySelector('#mPedDel').onclick = function () { m.cerrar(); setTimeout(function () { cancelarPedido(x); }, 220); };
+  }
+
+  function cancelarPedido(x) {
+    var st = { motivo: '' };
+    var m = modal('Cancelar ' + nombrePedido(x), '<p class="gris" style="margin-top:0">' + pesos(totalItems(x.items)) + '. ¿Por qué se cancela?</p>' +
+      '<div class="motivos">' + MOTIVOS.map(function (r) { return '<button class="sec" data-motivo="' + r + '">' + r + '</button>'; }).join('') + '</div>' +
+      '<input id="mCanNota" maxlength="60" placeholder="Nota (opcional)">' +
+      '<div class="acciones"><button class="sec" id="mCanNo">Volver</button><button class="peligro" id="mCanSi">Cancelar pedido</button></div>' +
+      '<p class="gris peq">Queda con el motivo y la hora en el resumen del cierre de caja.</p>');
+    $$('[data-motivo]', m).forEach(function (b) { b.onclick = function () { st.motivo = b.getAttribute('data-motivo'); $$('[data-motivo]', m).forEach(function (y) { y.classList.toggle('sel', y === b); }); }; });
+    m.querySelector('#mCanNo').onclick = function () { m.cerrar(); };
+    m.querySelector('#mCanSi').onclick = function () {
+      if (!st.motivo) { aviso('Toque el motivo', 'error'); return; }
+      var nota = m.querySelector('#mCanNota').value.trim();
+      if (OP.pedidoActivo === x.id) soltarCarrito();
+      terminarPedido(x, { cancelado: { motivo: st.motivo + (nota ? ': ' + nota : ''), hora: Date.now(), usuario: SES.nombre } });
+      m.cerrar(); aviso(nombrePedido(x) + ' cancelado', 'exito'); pintarTab();
     };
+  }
+
+  /** Lo que pasa con la fila al registrar una venta. */
+  function filaTrasCobro(venta, ref, entregado) {
+    var cob = { medio: venta.medio, total: venta.total, hora: Date.now(), venta: venta.id };
+    var pa = pedidoActivo();
+    if (pa) {
+      pa.cobrado = cob; pa.items = JSON.parse(JSON.stringify(OP.carrito));
+      if (pa.servido) terminarPedido(pa); else guardarPedidos();
+      return pa;
+    }
+    var x = { id: idNuevo('P'), num: filaNum(), nombre: ref, items: JSON.parse(JSON.stringify(OP.carrito)), creado: Date.now(), usuario: SES.usuario, servido: null, cobrado: cob };
+    if (entregado) { x.servido = x.creado; x.directo = true; FH.push({ num: x.num, nombre: x.nombre, creado: x.creado, servido: x.servido, cobrado: cob, directo: true }); guardarFH(); }
+    else { PED.push(x); guardarPedidos(); }
+    return x;
+  }
+
+  /** Resumen del turno para el cierre: pedidos tomados, cobrados, cancelados y espera promedio. */
+  function filaResumen() {
+    var todos = FH.concat(PED), canc = FH.filter(function (x) { return x.cancelado; });
+    var esperas = FH.filter(function (x) { return x.servido && !x.directo && !x.cancelado; }).map(function (x) { return x.servido - x.creado; });
+    return {
+      tomados: todos.length, cobrados: todos.filter(function (x) { return x.cobrado; }).length, sinCobrar: sinCobrar().length, cancelados: canc,
+      espera: esperas.length ? Math.round(esperas.reduce(function (a, b) { return a + b; }, 0) / esperas.length / 60000) : null
+    };
+  }
+  function filaResumenTexto() {
+    var r = filaResumen(); if (!r.tomados) return '';
+    return ('Fila: ' + r.tomados + ' pedidos, ' + r.cobrados + ' cobrados' + (r.cancelados.length ? ', ' + r.cancelados.length + ' cancelado' + (r.cancelados.length === 1 ? '' : 's') + ' (' + r.cancelados.map(function (x) { return '#' + x.num + ' ' + x.cancelado.motivo; }).join('; ') + ')' : '') +
+      (r.espera != null ? ', espera prom. ' + r.espera + ' min' : '')).slice(0, 200);
+  }
+  function resumenFilaHtml() {
+    var r = filaResumen(); if (!r.tomados) return '';
+    var motivos = {}; r.cancelados.forEach(function (x) { var k = x.cancelado.motivo.split(':')[0]; motivos[k] = (motivos[k] || 0) + 1; });
+    return '<div class="resumen-fila"><div class="l"><span>Pedidos tomados<small>Desde que se abrió la caja</small></span><b>' + r.tomados + '</b></div>' +
+      '<div class="l"><span>Cobrados</span><b class="ok">' + r.cobrados + '</b></div>' +
+      (r.sinCobrar ? '<div class="l"><span>Sin cobrar</span><b class="error">' + r.sinCobrar + '</b></div>' : '') +
+      '<div class="l"><span>Cancelados' + (r.cancelados.length ? '<small>' + Object.keys(motivos).map(function (k) { return motivos[k] + ' × ' + esc(k.toLowerCase()); }).join(' · ') + '</small>' : '') + '</span><b>' + r.cancelados.length + '</b></div>' +
+      (r.espera != null ? '<div class="l"><span>Espera promedio<small>De tomado a servido</small></span><b>' + r.espera + ' min</b></div>' : '') + '</div>';
   }
 
   function buscarProducto(nombre) { return OP.productos.filter(function (p) { return p.nombre === nombre; })[0]; }
@@ -1336,7 +1529,7 @@
     var c = $('carrito'); if (!c) return;
     if (!OP.carrito.length || !OP.turno || OP.tab !== 'vender') { c.innerHTML = ''; return; }
     var pa = pedidoActivo();
-    c.innerHTML = '<div class="caja" id="verCarrito"><div class="t">' + (pa ? '<em>' + esc(pa.nombre) + '</em>' : '') + '<b>' + pesos(totalCarrito()) + '</b><span>' + vasosCarrito() + ' vaso' + (vasosCarrito() === 1 ? '' : 's') + ' · ver</span></div><button class="guardar" id="btnGuardarPed">' + (pa ? 'Listo' : 'Por cobrar') + '</button><button class="amarillo" id="btnCobrar">Cobrar</button></div>';
+    c.innerHTML = '<div class="caja" id="verCarrito"><div class="t">' + (pa ? '<em>' + esc(pa.nombre) + '</em>' : '') + '<b>' + pesos(totalCarrito()) + '</b><span>' + vasosCarrito() + ' vaso' + (vasosCarrito() === 1 ? '' : 's') + ' · ver</span></div><button class="guardar" id="btnGuardarPed">' + (pa ? 'Listo' : 'A la fila') + '</button><button class="amarillo" id="btnCobrar">Cobrar</button></div>';
     $('verCarrito').onclick = function (e) { if (e.target.closest('#btnCobrar') || e.target.closest('#btnGuardarPed')) return; verCarrito(); };
     $('btnGuardarPed').onclick = guardarPedido;
     $('btnCobrar').onclick = cobrar;
@@ -1361,7 +1554,7 @@
       });
     };
     pintar();
-    if (OP.pedidoActivo) { var bv = m.querySelector('#mVaciar'); bv.textContent = 'Dejar por cobrar'; bv.className = 'sec'; }
+    if (OP.pedidoActivo) { var bv = m.querySelector('#mVaciar'); bv.textContent = 'Dejar en la fila'; bv.className = 'sec'; }
     m.querySelector('#mVaciar').onclick = function () { soltarCarrito(); m.cerrar(); pintarVender(); pintarCarrito(); };
     m.querySelector('#mCobrar').onclick = function () { m.cerrar(); setTimeout(cobrar, 220); };
   }
@@ -1373,7 +1566,9 @@
     var billetes = [0, 10000, 20000, 50000, 100000].filter(function (b) { return b === 0 || b >= total; }).slice(0, 6);
     var cobro = function () { return total + st.propina; };
     st.propina = 0;
-    var m = modal('Cobrar', '<div class="centro"><div class="gris peq">' + vasosCarrito() + ' vaso(s)</div><div class="total-grande" id="mTotal">' + pesos(total) + '</div><div class="gris peq" id="mConProp" hidden></div></div>' +
+    var pa = pedidoActivo();
+    var m = modal(pa ? 'Cobrar ' + nombrePedido(pa) : 'Cobrar', '<div class="centro"><div class="gris peq">' + vasosCarrito() + ' vaso(s)</div><div class="total-grande" id="mTotal">' + pesos(total) + '</div><div class="gris peq" id="mConProp" hidden></div></div>' +
+      (pa ? '' : '<div class="sena-cobro">' + htmlSena(true) + '<label class="fila" style="margin-top:10px"><input type="checkbox" id="mEntregado" class="auto"> <span>Ya se entregó (no pasa a la fila)</span></label></div>') +
       '<div' + (leerLocal('gp_propina_ok') ? '' : ' hidden') + '><label>Propina (aparte: no es venta)</label><div class="opciones" id="mProp"><button data-p="0" class="sel">Sin propina</button><button data-p="1000">' + pesos(1000) + '</button><button data-p="2000">' + pesos(2000) + '</button><button data-p="5000">' + pesos(5000) + '</button><button data-p="otra">Otra</button></div>' +
       '<input id="mPropina" placeholder="Valor de la propina" hidden></div>' +
       '<label>Medio de pago</label><div class="medios"><button data-m="EFECTIVO" class="sel">Efectivo</button><button data-m="TRANSFERENCIA">Transferencia</button></div>' +
@@ -1386,6 +1581,7 @@
       '<label for="mNota">Nota (opcional)</label><input id="mNota" maxlength="200">' +
       '<div class="acciones"><button class="grande amarillo" id="mConfirmar">Registrar venta</button></div>');
     campoPesos(m.querySelector('#mRecibido'));
+    var leerSena = pa ? function () { return ''; } : activarSena(m, function () {});
     var calc = function () {
       var r = numeroDe(m.querySelector('#mRecibido').value);
       var cb = m.querySelector('#mCambio');
@@ -1434,10 +1630,11 @@
       };
       // Primero queda guardada en el celular; así no se pierde si se cae el internet.
       agregarCola(venta);
-      quitarPedido(OP.pedidoActivo); soltarCarrito();
+      var fx = filaTrasCobro(venta, leerSena(), !pa && m.querySelector('#mEntregado').checked);
+      soltarCarrito();
       m.cerrar(); vibrar([20, 40, 20]);
-      aviso('Venta registrada · ' + pesos(total) + (st.propina ? ' + propina ' + pesos(st.propina) : '') + (recibido !== '' && recibido > cobro() ? ' · cambio ' + pesos(recibido - cobro()) : ''), 'exito', 4000);
-      pintarVender(); pintarCarrito();
+      aviso('Venta registrada · ' + pesos(total) + (st.propina ? ' + propina ' + pesos(st.propina) : '') + (recibido !== '' && recibido > cobro() ? ' · cambio ' + pesos(recibido - cobro()) : '') + (fx.servido ? '' : ' · ' + nombrePedido(fx) + ' en la fila'), 'exito', 4000);
+      pintarTab();
       enviarCola();
     };
   }
@@ -1581,7 +1778,8 @@
       '<div class="l"><span>Total vendido</span><span class="num">' + pesos(t.total) + ' · ' + t.vasos + ' vasos</span></div>' +
       (t.propinas ? '<div class="l"><span>Propinas (para repartir, no es venta)</span><span class="num">' + pesos(t.propinas) + '</span></div>' : '') + '</div>' +
       '<div class="tarjeta" style="margin-top:12px"><h2>Cerrar caja</h2>' +
-      (PED.length ? '<div class="alerta">⚠ Hay ' + PED.length + ' pedido(s) por cobrar: ' + PED.map(function (x) { return esc(x.nombre); }).join(', ') + '. Cóbrelos o elimínelos en Vender antes de cerrar.</div>' : '') +
+      (PED.length ? '<div class="alerta">⚠ No se puede cerrar: hay ' + PED.length + ' pedido(s) en la fila: ' + PED.map(function (x) { return esc(nombrePedido(x)) + (x.cobrado ? ' (falta servir)' : ' (sin cobrar)'); }).join(', ') + '. Cóbrelos y márquelos servidos, o cancélelos con motivo, en Fila.</div>' : '') +
+      resumenFilaHtml() +
       (pend ? '<p class="gris peq">Hay ' + pend + ' movimiento(s) por enviar. El cierre queda guardado y se envía después de ellos cuando haya señal.</p>' : '') +
       '<label for="cContado">Efectivo contado (incluida la base)</label><input id="cContado" placeholder="$">' +
       '<div class="cambio" id="cDif" style="display:none"></div>' +
@@ -1597,14 +1795,17 @@
     });
     $('cCerrar').onclick = function () {
       var v = $('cContado').value.trim();
-      if (PED.length) { aviso('Hay ' + PED.length + ' pedido(s) por cobrar. Cóbrelos o elimínelos antes de cerrar.', 'error'); return; }
+      if (PED.length) { aviso('Hay ' + PED.length + ' pedido(s) en la fila. Termínelos o cancélelos antes de cerrar.', 'error'); return; }
       if (!v) { aviso('Escriba el efectivo contado', 'error'); return; }
       if (SES.rol !== 'ADMIN' && t.abre && t.abre !== SES.nombre) { aviso('Esta caja la abrió ' + t.abre + '. La cierra esa persona o un administrador.', 'error'); return; }
       var dif = numeroDe(v) - t.esperado;
       confirmar('Cerrar caja', 'Efectivo contado: <b>' + pesos(numeroDe(v)) + '</b>.<br>' + (dif === 0 ? 'La caja cuadra.' : (dif < 0 ? 'Faltan ' : 'Sobran ') + '<b>' + pesos(Math.abs(dif)) + '</b>.') + '<br>Después de cerrar no se pueden registrar más ventas en este turno.', 'Cerrar caja').then(function (s) {
         if (!s) return;
         var contado = numeroDe(v);
-        agregarCola({ tipo: 'cerrar', id: idNuevo('C'), turno: t.id, contado: contado, obs: $('cObs').value.trim().slice(0, 300), local: { fecha: hoyISO(), hora: hora24() } });
+        var rf = filaResumenTexto(), obs = $('cObs').value.trim();
+        obs = rf ? (obs ? obs.slice(0, 300 - rf.length - 2) + '. ' : '') + rf : obs.slice(0, 300);
+        agregarCola({ tipo: 'cerrar', id: idNuevo('C'), turno: t.id, contado: contado, obs: obs, local: { fecha: hoyISO(), hora: hora24() } });
+        filaReiniciar();
         pintarEstadoCaja();
         var x = { total: t.total, vasos: t.vasos, propinas: t.propinas || 0, esperado: t.esperado, contado: contado, diferencia: contado - t.esperado };
         $('opVista').innerHTML = '<div class="abrir-caja"><img src="' + IMG.personaje + '" alt=""><div class="tarjeta"><h2>Caja cerrada</h2>' +
