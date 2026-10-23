@@ -1900,30 +1900,46 @@
   function corto(n) { n = Number(n || 0); if (Math.abs(n) >= 1e6) return (Math.round(n / 1e5) / 10).toLocaleString('es-CO') + 'M'; if (Math.abs(n) >= 1e3) return Math.round(n / 1e3) + 'k'; return String(Math.round(n)); }
 
   // ---------- Efectivo que debe haber ----------
-  function verEfectivo(e) {
-    var admin = SES.rol === 'ADMIN';
+  /**
+   * Detalle de una cuenta: 'efectivo' (lo guardado + la caja abierta) o 'transferencias' (Nequi, Bancolombia...).
+   * l = liquidez del servidor; un servidor viejo solo manda el efectivo y entonces no hay pestaña de transferencias.
+   */
+  function verCuenta(cual, l) {
+    var admin = SES.rol === 'ADMIN', tr = cual === 'transferencias';
+    var e = tr ? l.transferencias : l.efectivo;
     var fila = function (t, v, clase) { return '<div class="l' + (clase ? ' ' + clase : '') + '"><span>' + t + '</span><span class="num">' + v + '</span></div>'; };
-    var m = modal('Efectivo que debe haber',
-      '<div class="cuadre">' +
+    var menos = function (t, v) { return v ? fila(t, '−' + pesos(v)) : ''; }, mas = function (t, v) { return v ? fila(t, pesos(v)) : ''; };
+    var cuadre = tr ?
+      fila('Recibido por transferencia', pesos(e.recibido)) + mas('Más consignado desde el efectivo', e.consignado) + mas('Más ingresos a la cuenta', e.entradas) +
+      menos('Menos pagos y gastos pagados por transferencia', e.pagos) + menos('Menos salidas registradas', e.salidas) + fila('Debe haber en transferencias', pesos(e.total), 'total') :
       fila('Contado en los cierres', pesos(e.contado)) + fila('Menos bases sacadas para abrir caja', '−' + pesos(e.bases)) +
-      (e.entradas ? fila('Más ingresos de efectivo', pesos(e.entradas)) : '') + (e.salidas ? fila('Menos salidas registradas', '−' + pesos(e.salidas)) : '') +
-      fila('Guardado fuera de caja', pesos(e.guardado)) + (e.caja ? fila('En la caja abierta', pesos(e.caja)) : '') +
-      fila('Total que debe haber', pesos(e.total), 'total') + '</div>' +
-      (e.propinas ? '<p class="gris peq">De ese total, ' + pesos(e.propinas) + ' son propinas de los operadores. Cuando se las entregues, regístralo como salida "Propinas entregadas".</p>' : '') +
-      '<p class="gris peq">Los gastos pagados con plata de la caja ya están descontados en cada cierre. Si sacas efectivo guardado para consignar, pagar nómina, pagarle a Miguel o repartir, regístralo aquí para que el número siga cuadrando.</p>' +
+      mas('Más ingresos de efectivo', e.entradas) + mas('Más retiros de la cuenta a efectivo', e.retiros) +
+      menos('Menos pagos y gastos pagados con efectivo guardado', e.pagos) + menos('Menos salidas registradas', e.salidas) +
+      fila('Guardado fuera de caja', pesos(e.guardado)) + (e.caja ? fila('En la caja abierta', pesos(e.caja)) : '') + fila('Total que debe haber', pesos(e.total), 'total');
+    var m = modal(tr ? 'Plata en transferencias' : 'Efectivo que debe haber',
+      (l.transferencias ? '<div class="pestanas" id="eCta"><button data-c="efectivo" class="' + (tr ? '' : 'activo') + '">Efectivo</button><button data-c="transferencias" class="' + (tr ? 'activo' : '') + '">Transferencias</button></div>' : '') +
+      '<div class="cuadre">' + cuadre + '</div>' +
+      (l.transferencias ? '<p class="gris peq">Liquidez total (efectivo + transferencias): <b>' + pesos(l.total) + '</b>' + (l.propinas ? ', de los cuales ' + pesos(l.propinas) + ' son propinas de los operadores' : '') + '.</p>' : '') +
+      (e.propinas ? '<p class="gris peq">De ' + (tr ? 'esta cuenta' : 'ese total') + ', ' + pesos(e.propinas) + ' son propinas de los operadores. Cuando se las entregues, regístralo como salida "Propinas entregadas".</p>' : '') +
+      (l.nSinIndicar ? '<p class="gris peq">Hay ' + l.nSinIndicar + ' pago(s) o gasto(s) por ' + pesos(l.sinIndicar) + ' sin decir con qué se pagaron: no se descuentan de ninguna cuenta. Complétalos en Gastos.</p>' : '') +
+      '<p class="gris peq">' + (tr ? 'Las ventas por transferencia entran solas. Los pagos a proveedores y gastos fijos marcados "Pagado con: Transferencia" se descuentan solos. Registra aquí lo demás: retiros a efectivo, pagos a Miguel, repartos.' :
+        'Los gastos pagados con plata de la caja ya están descontados en cada cierre, y los pagos marcados "Pagado con: Efectivo guardado" se descuentan solos. Registra aquí lo demás: consignaciones, pagos a Miguel, repartos.') + '</p>' +
       (e.movimientos.length ? '<h3>Últimos movimientos</h3><div class="lista">' + e.movimientos.map(function (x) {
-        return '<div class="item"><div class="d"><b>' + esc(x.motivo) + '</b><span>' + fechaCorta(x.fecha).slice(0, 5) + ' ' + esc(x.hora) + ' · ' + esc(x.usuario) + (x.descripcion ? ' · ' + esc(x.descripcion) : '') + '</span></div><div class="v ' + (x.tipo === 'SALIDA' ? 'neg' : 'pos') + '">' + (x.tipo === 'SALIDA' ? '−' : '+') + pesos(x.valor) + '</div></div>';
+        // Una consignación sale del efectivo y entra a transferencias (y un retiro al revés): se muestra con el signo de esta cuenta.
+        var sale = (x.cuenta === 'TRANSFERENCIA') === tr ? x.tipo === 'SALIDA' : false;
+        return '<div class="item"><div class="d"><b>' + esc(x.motivo) + '</b><span>' + fechaCorta(x.fecha).slice(0, 5) + ' ' + esc(x.hora) + ' · ' + esc(x.usuario) + (x.descripcion ? ' · ' + esc(x.descripcion) : '') + '</span></div><div class="v ' + (sale ? 'neg' : 'pos') + '">' + (sale ? '−' : '+') + pesos(x.valor) + '</div></div>';
       }).join('') + '</div>' : '') +
-      (admin ? '<h3>Registrar movimiento</h3><div class="medios" id="eTipo"><button data-t="SALIDA" class="sel">Sale efectivo</button><button data-t="ENTRADA">Entra efectivo</button></div>' +
+      (admin ? '<h3>Registrar movimiento</h3><div class="medios" id="eTipo"><button data-t="SALIDA" class="sel">' + (tr ? 'Sale de la cuenta' : 'Sale efectivo') + '</button><button data-t="ENTRADA">' + (tr ? 'Entra a la cuenta' : 'Entra efectivo') + '</button></div>' +
         '<label>Motivo</label><select id="eMot">' + e.motivos.map(function (x) { return '<option>' + esc(x) + '</option>'; }).join('') + '</select>' +
         '<div class="grid2"><div><label>Valor</label><input id="eVal" inputmode="numeric"></div><div><label>Detalle</label><input id="eDes" placeholder="Opcional"></div></div>' +
         '<div class="acciones"><button id="eGuardar">Registrar</button></div>' : ''));
+    $$('#eCta button', m).forEach(function (b) { b.onclick = function () { if (b.getAttribute('data-c') === cual) return; m.cerrar(); verCuenta(b.getAttribute('data-c'), l); }; });
     if (!admin) return;
     var tipo = 'SALIDA';
     campoPesos(m.querySelector('#eVal'));
-    $$('#eTipo button', m).forEach(function (b) { b.onclick = function () { tipo = b.getAttribute('data-t'); $$('#eTipo button', m).forEach(function (y) { y.classList.toggle('sel', y === b); }); m.querySelector('#eMot').value = tipo === 'ENTRADA' ? 'Ingreso de efectivo' : 'Consignación al banco'; }; });
+    $$('#eTipo button', m).forEach(function (b) { b.onclick = function () { tipo = b.getAttribute('data-t'); $$('#eTipo button', m).forEach(function (y) { y.classList.toggle('sel', y === b); }); m.querySelector('#eMot').value = tipo === 'ENTRADA' ? (tr ? 'Ingreso a la cuenta' : 'Ingreso de efectivo') : (tr ? 'Retiro a efectivo' : 'Consignación al banco'); }; });
     m.querySelector('#eGuardar').onclick = function () {
-      var x = { tipo: tipo, motivo: m.querySelector('#eMot').value, descripcion: m.querySelector('#eDes').value.trim(), valor: numeroDe(m.querySelector('#eVal').value) };
+      var x = { cuenta: tr ? 'TRANSFERENCIA' : 'EFECTIVO', tipo: tipo, motivo: m.querySelector('#eMot').value, descripcion: m.querySelector('#eDes').value.trim(), valor: numeroDe(m.querySelector('#eVal').value) };
       if (!(x.valor > 0)) { aviso('Escribe el valor', 'error'); return; }
       api('adminMovimientoEfectivo', x).then(function () { m.cerrar(); aviso('Movimiento registrado', 'exito'); vInicio(); }).catch(function (er) { aviso(er.message, 'error'); });
     };
@@ -1933,6 +1949,7 @@
   function vInicio() {
     api('adminInicio').then(function (r) {
       var d = r.dia || { vasos: 0, ingreso: 0, efectivo: 0, transferencia: 0, margen: 0 };
+      var liq = r.liquidez || null, lq = liq || { efectivo: r.efectivo };
       var m = r.mes || {};
       var eq = r.equilibrio || {};
       // La barra mide solo lo vendido hoy: arranca en cero cada día.
@@ -1959,7 +1976,9 @@
         kpi('Hoy · vendido', pesos(d.ingreso), d.vasos + ' vasos · ' + r.ventasHoy + ' ventas', 'destacado') +
         kpi('Hoy · efectivo', pesos(d.efectivo), 'Transferencias ' + pesos(d.transferencia)) +
         (r.turno ? kpi('Caja abierta', pesos(r.turno.esperado), 'Debe haber en efectivo · ' + esc(r.turno.abre)) : kpi('Caja', 'Cerrada', 'No hay turno abierto')) +
-        (r.efectivo ? '<div class="kpi clic" id="kEfectivo" role="button" tabindex="0"><span>Efectivo que debe haber</span><b class="num">' + pesos(r.efectivo.total) + '</b><small>' + (r.efectivo.caja ? 'Caja ' + pesos(r.efectivo.caja) + ' · guardado ' + pesos(r.efectivo.guardado) : 'Guardado fuera de caja') + (r.efectivo.propinas ? ' · ' + pesos(r.efectivo.propinas) + ' son propinas' : '') + '</small></div>' : '') +
+        (r.efectivo ? '<div class="kpi clic" id="kEfectivo" role="button" tabindex="0"><span>Efectivo</span><b class="num">' + pesos(r.efectivo.total) + '</b><small>' + (r.efectivo.caja ? 'Caja ' + pesos(r.efectivo.caja) + ' · guardado ' + pesos(r.efectivo.guardado) : 'Guardado fuera de caja') + (r.efectivo.propinas ? ' · ' + pesos(r.efectivo.propinas) + ' son propinas' : '') + '</small></div>' : '') +
+        (liq ? '<div class="kpi clic" id="kTransf" role="button" tabindex="0"><span>Transferencias</span><b class="num">' + pesos(liq.transferencias.total) + '</b><small>' + (liq.transferencias.cajaAbierta ? 'Hoy ' + pesos(liq.transferencias.cajaAbierta) : 'En Nequi, Bancolombia…') + (liq.transferencias.propinas ? ' · ' + pesos(liq.transferencias.propinas) + ' son propinas' : '') + '</small></div>' +
+          '<div class="kpi clic destacado" id="kLiquidez" role="button" tabindex="0"><span>Liquidez total</span><b class="num">' + pesos(liq.total) + '</b><small>Efectivo + transferencias' + (liq.nSinIndicar ? ' · ' + liq.nSinIndicar + ' pago(s) sin cuenta' : '') + '</small></div>' : '') +
         kpi('Hoy · margen', pesos(d.margen), 'Ventas menos costo de insumos') +
         '</div>' +
         '<div class="seccion-grid"><div>' +
@@ -1977,8 +1996,10 @@
         '<div class="tarjeta" style="margin-top:16px"><h2>Pendientes</h2>' + (r.alertas.length ? r.alertas.map(function (a, i) { return '<div class="alerta" data-tipo="' + a.tipo + '">⚠ <span style="flex:1">' + esc(a.texto) + (a.tipo === 'nomina' && SES.rol === 'ADMIN' ? '<br><button class="peq" data-nomina="' + i + '" style="margin-top:8px">Registrar pago de hoy</button>' : '') + '</span></div>'; }).join('') : '<div class="alerta ok">Todo al día.</div>') + '</div>' +
         '<div class="tarjeta" style="margin-top:16px"><h2>Vasos por hora · hoy</h2>' + (horas.length ? barras(horas, 'v', function (x) { return x.h + 'h'; }) : '<div class="vacio">Sin ventas hoy.</div>') + '</div>' +
         '</div></div>';
-      if ($('kEfectivo')) $('kEfectivo').onclick = function () { verEfectivo(r.efectivo); };
-      $$('.alerta[data-tipo]').forEach(function (a) { a.onclick = function () { ir({ turno: 'cajas', cierre: 'cajas', pagos: 'gastos', activos: 'activos', diario: 'diario', nomina: 'gastos' }[a.getAttribute('data-tipo')]); }; });
+      if ($('kEfectivo')) $('kEfectivo').onclick = function () { verCuenta('efectivo', lq); };
+      if ($('kTransf')) $('kTransf').onclick = function () { verCuenta('transferencias', lq); };
+      if ($('kLiquidez')) $('kLiquidez').onclick = function () { verCuenta('efectivo', lq); };
+      $$('.alerta[data-tipo]').forEach(function (a) { a.onclick = function () { ir({ turno: 'cajas', cierre: 'cajas', pagos: 'gastos', activos: 'activos', diario: 'diario', nomina: 'gastos', sinCuenta: 'gastos' }[a.getAttribute('data-tipo')]); }; });
       $$('[data-nomina]').forEach(function (b) {
         b.onclick = function (e) {
           e.stopPropagation();
@@ -2123,9 +2144,10 @@
         '<p class="gris peq" style="margin-top:-6px">' + (tab === 'pagos' ? 'Hoja "Pagos a Proveedores": caña, vasos, hielo, gasolina, fruta, licor, mantenimiento. Los gastos pagados de la caja llegan aquí solos.' : 'Hoja "Registro Gastos": solo costos fijos (nómina, vacuna, permiso, arriendo, parqueadero). La caña, el hielo y los vasos no van aquí.') + '</p>' +
         '<div class="filtros"><div><label>Desde</label><input type="date" id="gDesde" value="' + esc(f.desde) + '"></div><div><label>Hasta</label><input type="date" id="gHasta" value="' + esc(f.hasta) + '"></div><div style="flex:0 0 auto"><button class="sec" id="gFiltrar">Ver</button></div><div style="flex:0 0 auto"><button class="amarillo" id="gNuevo">' + ICON.mas + ' Registrar</button></div></div>' +
         '<div class="kpis">' + kpi('Total del periodo', pesos(total), lista.length + ' registros', 'destacado') + (tab === 'pagos' ? kpi('Pagado (histórico)', pesos(tp.pagado)) + kpi('Pendiente por pagar', pesos(tp.pendiente), tp.nPendientes + ' pagos', tp.pendiente ? 'negativo' : '') : '') + '</div>' +
-        (lista.length ? '<div class="tabla-scroll"><table><thead><tr><th>Fecha</th>' + (tab === 'pagos' ? '<th>Proveedor</th>' : '') + '<th>Categoría</th><th>Descripción</th><th class="n">Valor</th>' + (tab === 'pagos' ? '<th>Estado</th>' : '') + '</tr></thead><tbody>' + lista.map(function (x) {
+        (lista.length ? '<div class="tabla-scroll"><table><thead><tr><th>Fecha</th>' + (tab === 'pagos' ? '<th>Proveedor</th>' : '') + '<th>Categoría</th><th>Descripción</th><th class="n">Valor</th>' + (tab === 'pagos' ? '<th>Estado</th>' : '') + '<th>Pagado con</th></tr></thead><tbody>' + lista.map(function (x) {
           return '<tr class="clic" data-fila="' + x.fila + '"><td>' + fechaCorta(x.fecha) + '</td>' + (tab === 'pagos' ? '<td>' + esc(x.proveedor) + '</td>' : '') + '<td>' + esc(x.categoria) + '</td><td>' + esc(x.descripcion) + '</td><td class="n">' + pesos(x.valor) + '</td>' +
-            (tab === 'pagos' ? '<td>' + (x.estado === 'Pendiente' ? '<span class="chip rojo">Pendiente</span>' : '<span class="chip">Pagado</span>') + '</td>' : '') + '</tr>';
+            (tab === 'pagos' ? '<td>' + (x.estado === 'Pendiente' ? '<span class="chip rojo">Pendiente</span>' : '<span class="chip">Pagado</span>') + '</td>' : '') +
+            '<td>' + (x.estado === 'Pendiente' ? '' : x.pagadoCon ? '<span class="chip ' + ({ 'Transferencia': 'azul', 'Efectivo guardado': '', 'Caja del día': 'gris' }[x.pagadoCon] || '') + '">' + esc(x.pagadoCon) + '</span>' : (x.pagadoCon === undefined ? '' : '<span class="chip amarillo">Sin indicar</span>')) + '</td></tr>';
         }).join('') + '</tbody></table></div>' : '<div class="vacio">Sin registros en el periodo.</div>');
       $$('#pG button').forEach(function (b) { b.onclick = function () { AD.tabGastos = b.getAttribute('data-t'); vGastos(); }; });
       $('gFiltrar').onclick = function () { AD.fGastos = { desde: $('gDesde').value, hasta: $('gHasta').value }; vGastos(); };
@@ -2223,20 +2245,39 @@
     var pagos = tab === 'pagos';
     x = x || { fecha: AD.hoy, categoria: '', descripcion: '', valor: '', proveedor: '', estado: 'Pagado' };
     var cats = pagos ? AD.cat.categoriasPago : AD.cat.categoriasGasto;
+    // "Pagado con" decide de qué cuenta se descuenta (Samuel, 22 oct 2026). Lo del capital de Miguel se registra en Activos.
+    // Un servidor viejo no conoce "Pagado con" (no manda la lista): no se pregunta, para no prometer algo que no se guarda.
+    var opcionesCon = AD.cat.pagadoCon || null;
+    var deCaja = x.pagadoCon === 'Caja del día', pagadoCon = x.pagadoCon || '';
     var m = modal((x.fila ? 'Editar ' : 'Registrar ') + (pagos ? 'pago a proveedor' : 'gasto fijo'),
       '<div class="grid2"><div><label>Fecha</label><input type="date" id="xF" value="' + esc(x.fecha) + '"></div><div><label>Valor</label><input id="xV" value="' + esc(x.valor) + '"></div></div>' +
       (pagos ? '<label>Proveedor</label><input id="xP" value="' + esc(x.proveedor) + '">' : '') +
       '<label>Categoría</label><select id="xC">' + cats.map(function (c) { return '<option' + (c === x.categoria ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select>' +
       '<label>Descripción</label><input id="xD" value="' + esc(x.descripcion) + '">' +
-      (pagos ? '<label>Estado</label><div class="medios"><button data-e="Pagado" class="' + (x.estado !== 'Pendiente' ? 'sel' : '') + '">Pagado</button><button data-e="Pendiente" class="' + (x.estado === 'Pendiente' ? 'sel' : '') + '">Pendiente</button></div>' : '') +
+      (pagos ? '<label>Estado</label><div class="medios" id="xE"><button data-e="Pagado" class="' + (x.estado !== 'Pendiente' ? 'sel' : '') + '">Pagado</button><button data-e="Pendiente" class="' + (x.estado === 'Pendiente' ? 'sel' : '') + '">Pendiente</button></div>' : '') +
+      (!opcionesCon ? '' : deCaja ? '<label>Pagado con</label><p class="gris peq" style="margin:4px 0 0">Caja del día: se pagó con la plata de la caja abierta y ya está descontado en el cierre.</p>' :
+        '<div id="xConBox"><label>Pagado con</label><div class="medios" id="xCon">' + opcionesCon.map(function (c) { return '<button data-con="' + esc(c) + '" class="' + (c === pagadoCon ? 'sel' : '') + '">' + esc(c) + '</button>'; }).join('') + '</div>' +
+        '<p class="gris peq" id="xConNota" style="margin:4px 0 0"></p></div>') +
       '<div class="acciones">' + (x.fila ? '<button class="peligro" id="xB">Borrar</button>' : '') + '<button id="xG">Guardar</button></div>');
     campoPesos(m.querySelector('#xV'));
     var estado = x.estado || 'Pagado';
-    $$('.medios button', m).forEach(function (b) { b.onclick = function () { estado = b.getAttribute('data-e'); $$('.medios button', m).forEach(function (y) { y.classList.toggle('sel', y === b); }); }; });
+    var notaCon = function () {
+      var n = m.querySelector('#xConNota'), box = m.querySelector('#xConBox');
+      if (box) box.style.display = estado === 'Pendiente' ? 'none' : '';
+      if (n) n.textContent = { 'Efectivo guardado': 'Se descuenta del efectivo guardado.', 'Transferencia': 'Se descuenta de la plata en transferencias.', 'Capital de Miguel': 'No es gasto del negocio: se registra en Activos y se descuenta del capital de Miguel.' }[pagadoCon] || 'Elige de dónde salió la plata.';
+    };
+    $$('#xE button', m).forEach(function (b) { b.onclick = function () { estado = b.getAttribute('data-e'); $$('#xE button', m).forEach(function (y) { y.classList.toggle('sel', y === b); }); notaCon(); }; });
+    $$('#xCon button', m).forEach(function (b) { b.onclick = function () { pagadoCon = b.getAttribute('data-con'); $$('#xCon button', m).forEach(function (y) { y.classList.toggle('sel', y === b); }); notaCon(); }; });
+    notaCon();
     m.querySelector('#xG').onclick = function () {
       var d = { fila: x.fila || null, fecha: m.querySelector('#xF').value, categoria: m.querySelector('#xC').value, descripcion: m.querySelector('#xD').value.trim(), valor: numeroDe(m.querySelector('#xV').value) };
       if (pagos) { d.proveedor = m.querySelector('#xP').value.trim(); d.estado = estado; }
-      api(pagos ? 'adminGuardarPago' : 'adminGuardarGasto', d).then(function () { m.cerrar(); aviso('Guardado en el archivo', 'exito'); vGastos(); }).catch(function (e) { aviso(e.message, 'error'); });
+      if (!opcionesCon) { /* servidor viejo */ }
+      else if (deCaja) d.pagadoCon = 'Caja del día';
+      else if (estado === 'Pendiente') d.pagadoCon = '';
+      else if (!pagadoCon) { aviso('Elige con qué se pagó', 'error'); return; }
+      else d.pagadoCon = pagadoCon;
+      api(pagos ? 'adminGuardarPago' : 'adminGuardarGasto', d).then(function (r) { m.cerrar(); aviso(r && r.activo ? 'Registrado en Activos (capital de Miguel)' : 'Guardado en el archivo', 'exito'); vGastos(); }).catch(function (e) { aviso(e.message, 'error'); });
     };
     if (m.querySelector('#xB')) m.querySelector('#xB').onclick = function () {
       confirmar('Borrar', '¿Borrar este registro del archivo?', 'Borrar', true).then(function (s) { if (!s) return; api(pagos ? 'adminBorrarPago' : 'adminBorrarGasto', x.fila).then(function () { m.cerrar(); aviso('Borrado', 'exito'); vGastos(); }).catch(function (e) { aviso(e.message, 'error'); }); });

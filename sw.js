@@ -1,5 +1,5 @@
-// Guarda la pantalla en el celular para que la app abra sin internet. Versión 1f1a5573ff.
-const CACHE = 'guarapinho-1f1a5573ff';
+// Guarda la pantalla en el celular para que la app abra sin internet. Versión 9437bc0bb9.
+const CACHE = 'guarapinho-9437bc0bb9';
 const FUENTES = 'fuentes-guarapinho';
 const ARCHIVOS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
