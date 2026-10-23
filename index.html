@@ -1901,37 +1901,50 @@
 
   // ---------- Efectivo que debe haber ----------
   /**
-   * Detalle de una cuenta: 'efectivo' (lo guardado + la caja abierta) o 'transferencias' (Nequi, Bancolombia...).
-   * l = liquidez del servidor; un servidor viejo solo manda el efectivo y entonces no hay pestaña de transferencias.
+   * Detalle de una cuenta: 'efectivo' (lo guardado + la caja abierta), 'transferencias' (Nequi, Bancolombia...)
+   * o 'propinas' (lo de los operadores, guardado aparte). Las dos primeras son plata del negocio, sin propinas.
+   * l = liquidez del servidor; un servidor viejo solo manda el efectivo y entonces no hay pestañas.
    */
   function verCuenta(cual, l) {
-    var admin = SES.rol === 'ADMIN', tr = cual === 'transferencias';
-    var e = tr ? l.transferencias : l.efectivo;
+    var admin = SES.rol === 'ADMIN', tr = cual === 'transferencias', pr = cual === 'propinas';
+    var e = pr ? l.propinas : tr ? l.transferencias : l.efectivo;
     var fila = function (t, v, clase) { return '<div class="l' + (clase ? ' ' + clase : '') + '"><span>' + t + '</span><span class="num">' + v + '</span></div>'; };
     var menos = function (t, v) { return v ? fila(t, '−' + pesos(v)) : ''; }, mas = function (t, v) { return v ? fila(t, pesos(v)) : ''; };
-    var cuadre = tr ?
-      fila('Recibido por transferencia', pesos(e.recibido)) + mas('Más consignado desde el efectivo', e.consignado) + mas('Más ingresos a la cuenta', e.entradas) +
-      menos('Menos pagos y gastos pagados por transferencia', e.pagos) + menos('Menos salidas registradas', e.salidas) + fila('Debe haber en transferencias', pesos(e.total), 'total') :
+    var cuadre = pr ?
+      fila('Propinas en efectivo', pesos(e.efectivo)) + mas('Más pasadas desde la cuenta', e.desdeCuenta) + mas('Más efectivo pasado a propinas', e.desdeEfectivo) +
+      menos('Menos entregadas', e.entregadas) + fila('En la bolsa', pesos(e.bolsa)) + (e.enCaja ? '<div class="l"><span class="gris">De eso, en la caja abierta</span><span class="num gris">' + pesos(e.enCaja) + '</span></div>' : '') +
+      (e.enCuenta ? fila('Todavía en la cuenta de transferencias', pesos(e.enCuenta)) : '') + fila('Propinas por entregar', pesos(e.total), 'total') :
+      tr ?
+      fila('Ventas por transferencia', pesos(e.ventas)) + mas('Más consignado desde el efectivo', e.consignado) + mas('Más ingresos a la cuenta', e.entradas) +
+      menos('Menos pagos y gastos pagados por transferencia', e.pagos) + menos('Menos salidas registradas', e.salidas) + fila('Plata del negocio en la cuenta', pesos(e.total), 'total') +
+      (e.propinasEnCuenta ? '<div class="l"><span class="gris">Más propinas que siguen en la cuenta</span><span class="num gris">' + pesos(e.propinasEnCuenta) + '</span></div>' + fila('Lo que debe decir el banco', pesos(e.enBanco)) : '') :
       fila('Contado en los cierres', pesos(e.contado)) + fila('Menos bases sacadas para abrir caja', '−' + pesos(e.bases)) +
+      (e.propinasCaja != null ? menos('Menos propinas separadas en los cierres', e.propinas) : '') +
       mas('Más ingresos de efectivo', e.entradas) + mas('Más retiros de la cuenta a efectivo', e.retiros) +
       menos('Menos pagos y gastos pagados con efectivo guardado', e.pagos) + menos('Menos salidas registradas', e.salidas) +
-      fila('Guardado fuera de caja', pesos(e.guardado)) + (e.caja ? fila('En la caja abierta', pesos(e.caja)) : '') + fila('Total que debe haber', pesos(e.total), 'total');
-    var m = modal(tr ? 'Plata en transferencias' : 'Efectivo que debe haber',
-      (l.transferencias ? '<div class="pestanas" id="eCta"><button data-c="efectivo" class="' + (tr ? '' : 'activo') + '">Efectivo</button><button data-c="transferencias" class="' + (tr ? 'activo' : '') + '">Transferencias</button></div>' : '') +
+      fila('Guardado fuera de caja', pesos(e.guardado)) + (e.caja ? fila('En la caja abierta' + (e.propinasCaja ? ' (sin propinas)' : ''), pesos(e.caja)) : '') + fila('Total que debe haber', pesos(e.total), 'total');
+    var nota = pr ? 'Las propinas no son del negocio: no cuentan en Efectivo, Transferencias ni Liquidez. Las de efectivo se separan al cerrar la caja. Las que llegan por transferencia, cuando las saques a la bolsa, regístralo en Transferencias como "Propinas a la bolsa". Cuando se las entregues a los operadores, regístralo aquí.' :
+      tr ? 'Las ventas por transferencia entran solas. Los pagos a proveedores y gastos fijos marcados "Pagado con: Transferencia" se descuentan solos. Registra aquí lo demás: retiros a efectivo, propinas que pasas a la bolsa, pagos a Miguel, repartos.' :
+      'Los gastos pagados con plata de la caja ya están descontados en cada cierre, y los pagos marcados "Pagado con: Efectivo guardado" se descuentan solos. Las propinas se separan en la bolsa. Registra aquí lo demás: consignaciones, pagos a Miguel, repartos, o "Pasar a propinas" si una propina quedó como sobrante.';
+    var titulo = pr ? 'Propinas guardadas' : tr ? 'Plata en transferencias' : 'Efectivo que debe haber';
+    var m = modal(titulo,
+      (l.transferencias ? '<div class="pestanas" id="eCta"><button data-c="efectivo" class="' + (!tr && !pr ? 'activo' : '') + '">Efectivo</button><button data-c="transferencias" class="' + (tr ? 'activo' : '') + '">Transferencias</button>' +
+        (l.propinas ? '<button data-c="propinas" class="' + (pr ? 'activo' : '') + '">Propinas</button>' : '') + '</div>' : '') +
       '<div class="cuadre">' + cuadre + '</div>' +
-      (l.transferencias ? '<p class="gris peq">Liquidez total (efectivo + transferencias): <b>' + pesos(l.total) + '</b>' + (l.propinas ? ', de los cuales ' + pesos(l.propinas) + ' son propinas de los operadores' : '') + '.</p>' : '') +
-      (e.propinas ? '<p class="gris peq">De ' + (tr ? 'esta cuenta' : 'ese total') + ', ' + pesos(e.propinas) + ' son propinas de los operadores. Cuando se las entregues, regístralo como salida "Propinas entregadas".</p>' : '') +
-      (l.nSinIndicar ? '<p class="gris peq">Hay ' + l.nSinIndicar + ' pago(s) o gasto(s) por ' + pesos(l.sinIndicar) + ' sin decir con qué se pagaron: no se descuentan de ninguna cuenta. Complétalos en Gastos.</p>' : '') +
-      '<p class="gris peq">' + (tr ? 'Las ventas por transferencia entran solas. Los pagos a proveedores y gastos fijos marcados "Pagado con: Transferencia" se descuentan solos. Registra aquí lo demás: retiros a efectivo, pagos a Miguel, repartos.' :
-        'Los gastos pagados con plata de la caja ya están descontados en cada cierre, y los pagos marcados "Pagado con: Efectivo guardado" se descuentan solos. Registra aquí lo demás: consignaciones, pagos a Miguel, repartos.') + '</p>' +
+      (l.transferencias && !pr ? '<p class="gris peq">Liquidez del negocio (efectivo + transferencias, sin propinas): <b>' + pesos(l.total) + '</b>.</p>' : '') +
+      (!l.propinas && e.propinas ? '<p class="gris peq">De ese total, ' + pesos(e.propinas) + ' son propinas de los operadores.</p>' : '') +
+      (l.nSinIndicar && !pr ? '<p class="gris peq">Hay ' + l.nSinIndicar + ' pago(s) o gasto(s) por ' + pesos(l.sinIndicar) + ' sin decir con qué se pagaron: no se descuentan de ninguna cuenta. Complétalos en Gastos.</p>' : '') +
+      '<p class="gris peq">' + nota + '</p>' +
       (e.movimientos.length ? '<h3>Últimos movimientos</h3><div class="lista">' + e.movimientos.map(function (x) {
-        // Una consignación sale del efectivo y entra a transferencias (y un retiro al revés): se muestra con el signo de esta cuenta.
-        var sale = (x.cuenta === 'TRANSFERENCIA') === tr ? x.tipo === 'SALIDA' : false;
-        return '<div class="item"><div class="d"><b>' + esc(x.motivo) + '</b><span>' + fechaCorta(x.fecha).slice(0, 5) + ' ' + esc(x.hora) + ' · ' + esc(x.usuario) + (x.descripcion ? ' · ' + esc(x.descripcion) : '') + '</span></div><div class="v ' + (sale ? 'neg' : 'pos') + '">' + (sale ? '−' : '+') + pesos(x.valor) + '</div></div>';
+        // Un mismo movimiento se ve en dos cuentas (una consignación sale del efectivo y entra a transferencias): signo según esta cuenta.
+        var aqui = pr ? (x.motivo === 'Propinas entregadas' ? 'sale' : 'entra') :
+          (x.cuenta === (tr ? 'TRANSFERENCIA' : 'EFECTIVO')) ? (x.tipo === 'SALIDA' ? 'sale' : 'entra') : 'entra';
+        return '<div class="item"><div class="d"><b>' + esc(x.motivo) + '</b><span>' + fechaCorta(x.fecha).slice(0, 5) + ' ' + esc(x.hora) + ' · ' + esc(x.usuario) + (x.descripcion ? ' · ' + esc(x.descripcion) : '') + '</span></div><div class="v ' + (aqui === 'sale' ? 'neg' : 'pos') + '">' + (aqui === 'sale' ? '−' : '+') + pesos(x.valor) + '</div></div>';
       }).join('') + '</div>' : '') +
-      (admin ? '<h3>Registrar movimiento</h3><div class="medios" id="eTipo"><button data-t="SALIDA" class="sel">' + (tr ? 'Sale de la cuenta' : 'Sale efectivo') + '</button><button data-t="ENTRADA">' + (tr ? 'Entra a la cuenta' : 'Entra efectivo') + '</button></div>' +
+      (admin ? '<h3>' + (pr ? 'Entregar propinas' : 'Registrar movimiento') + '</h3>' +
+        (pr ? '' : '<div class="medios" id="eTipo"><button data-t="SALIDA" class="sel">' + (tr ? 'Sale de la cuenta' : 'Sale efectivo') + '</button><button data-t="ENTRADA">' + (tr ? 'Entra a la cuenta' : 'Entra efectivo') + '</button></div>') +
         '<label>Motivo</label><select id="eMot">' + e.motivos.map(function (x) { return '<option>' + esc(x) + '</option>'; }).join('') + '</select>' +
-        '<div class="grid2"><div><label>Valor</label><input id="eVal" inputmode="numeric"></div><div><label>Detalle</label><input id="eDes" placeholder="Opcional"></div></div>' +
+        '<div class="grid2"><div><label>Valor</label><input id="eVal" inputmode="numeric"></div><div><label>Detalle</label><input id="eDes" placeholder="' + (pr ? 'A quién' : 'Opcional') + '"></div></div>' +
         '<div class="acciones"><button id="eGuardar">Registrar</button></div>' : ''));
     $$('#eCta button', m).forEach(function (b) { b.onclick = function () { if (b.getAttribute('data-c') === cual) return; m.cerrar(); verCuenta(b.getAttribute('data-c'), l); }; });
     if (!admin) return;
@@ -1939,7 +1952,7 @@
     campoPesos(m.querySelector('#eVal'));
     $$('#eTipo button', m).forEach(function (b) { b.onclick = function () { tipo = b.getAttribute('data-t'); $$('#eTipo button', m).forEach(function (y) { y.classList.toggle('sel', y === b); }); m.querySelector('#eMot').value = tipo === 'ENTRADA' ? (tr ? 'Ingreso a la cuenta' : 'Ingreso de efectivo') : (tr ? 'Retiro a efectivo' : 'Consignación al banco'); }; });
     m.querySelector('#eGuardar').onclick = function () {
-      var x = { cuenta: tr ? 'TRANSFERENCIA' : 'EFECTIVO', tipo: tipo, motivo: m.querySelector('#eMot').value, descripcion: m.querySelector('#eDes').value.trim(), valor: numeroDe(m.querySelector('#eVal').value) };
+      var x = { cuenta: pr ? 'PROPINAS' : tr ? 'TRANSFERENCIA' : 'EFECTIVO', tipo: tipo, motivo: m.querySelector('#eMot').value, descripcion: m.querySelector('#eDes').value.trim(), valor: numeroDe(m.querySelector('#eVal').value) };
       if (!(x.valor > 0)) { aviso('Escribe el valor', 'error'); return; }
       api('adminMovimientoEfectivo', x).then(function () { m.cerrar(); aviso('Movimiento registrado', 'exito'); vInicio(); }).catch(function (er) { aviso(er.message, 'error'); });
     };
@@ -1976,9 +1989,10 @@
         kpi('Hoy · vendido', pesos(d.ingreso), d.vasos + ' vasos · ' + r.ventasHoy + ' ventas', 'destacado') +
         kpi('Hoy · efectivo', pesos(d.efectivo), 'Transferencias ' + pesos(d.transferencia)) +
         (r.turno ? kpi('Caja abierta', pesos(r.turno.esperado), 'Debe haber en efectivo · ' + esc(r.turno.abre)) : kpi('Caja', 'Cerrada', 'No hay turno abierto')) +
-        (r.efectivo ? '<div class="kpi clic" id="kEfectivo" role="button" tabindex="0"><span>Efectivo</span><b class="num">' + pesos(r.efectivo.total) + '</b><small>' + (r.efectivo.caja ? 'Caja ' + pesos(r.efectivo.caja) + ' · guardado ' + pesos(r.efectivo.guardado) : 'Guardado fuera de caja') + (r.efectivo.propinas ? ' · ' + pesos(r.efectivo.propinas) + ' son propinas' : '') + '</small></div>' : '') +
-        (liq ? '<div class="kpi clic" id="kTransf" role="button" tabindex="0"><span>Transferencias</span><b class="num">' + pesos(liq.transferencias.total) + '</b><small>' + (liq.transferencias.cajaAbierta ? 'Hoy ' + pesos(liq.transferencias.cajaAbierta) : 'En Nequi, Bancolombia…') + (liq.transferencias.propinas ? ' · ' + pesos(liq.transferencias.propinas) + ' son propinas' : '') + '</small></div>' +
-          '<div class="kpi clic destacado" id="kLiquidez" role="button" tabindex="0"><span>Liquidez total</span><b class="num">' + pesos(liq.total) + '</b><small>Efectivo + transferencias' + (liq.nSinIndicar ? ' · ' + liq.nSinIndicar + ' pago(s) sin cuenta' : '') + '</small></div>' : '') +
+        (r.efectivo ? '<div class="kpi clic" id="kEfectivo" role="button" tabindex="0"><span>Efectivo</span><b class="num">' + pesos(r.efectivo.total) + '</b><small>' + (r.efectivo.caja ? 'Caja ' + pesos(r.efectivo.caja) + ' · guardado ' + pesos(r.efectivo.guardado) : 'Guardado fuera de caja') + (!liq && r.efectivo.propinas ? ' · ' + pesos(r.efectivo.propinas) + ' son propinas' : '') + '</small></div>' : '') +
+        (liq ? '<div class="kpi clic" id="kTransf" role="button" tabindex="0"><span>Transferencias</span><b class="num">' + pesos(liq.transferencias.total) + '</b><small>' + (liq.transferencias.cajaAbierta ? 'Hoy ' + pesos(liq.transferencias.cajaAbierta) : 'En Nequi, Bancolombia…') + '</small></div>' +
+          '<div class="kpi clic destacado" id="kLiquidez" role="button" tabindex="0"><span>Liquidez total</span><b class="num">' + pesos(liq.total) + '</b><small>Efectivo + transferencias, sin propinas' + (liq.nSinIndicar ? ' · ' + liq.nSinIndicar + ' pago(s) sin cuenta' : '') + '</small></div>' +
+          (liq.propinas ? '<div class="kpi clic" id="kPropinas" role="button" tabindex="0"><span>Propinas guardadas</span><b class="num">' + pesos(liq.propinas.total) + '</b><small>' + (liq.propinas.enCuenta ? pesos(liq.propinas.enCuenta) + ' siguen en la cuenta' : 'Por entregar a los operadores') + '</small></div>' : '') : '') +
         kpi('Hoy · margen', pesos(d.margen), 'Ventas menos costo de insumos') +
         '</div>' +
         '<div class="seccion-grid"><div>' +
@@ -1999,6 +2013,7 @@
       if ($('kEfectivo')) $('kEfectivo').onclick = function () { verCuenta('efectivo', lq); };
       if ($('kTransf')) $('kTransf').onclick = function () { verCuenta('transferencias', lq); };
       if ($('kLiquidez')) $('kLiquidez').onclick = function () { verCuenta('efectivo', lq); };
+      if ($('kPropinas')) $('kPropinas').onclick = function () { verCuenta('propinas', lq); };
       $$('.alerta[data-tipo]').forEach(function (a) { a.onclick = function () { ir({ turno: 'cajas', cierre: 'cajas', pagos: 'gastos', activos: 'activos', diario: 'diario', nomina: 'gastos', sinCuenta: 'gastos' }[a.getAttribute('data-tipo')]); }; });
       $$('[data-nomina]').forEach(function (b) {
         b.onclick = function (e) {
