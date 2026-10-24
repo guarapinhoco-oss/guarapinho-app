@@ -308,6 +308,10 @@
   .barra .avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--verde); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 900; cursor: pointer; flex: 0 0 38px; }
   .barra .btn-menu { display: none; background: none; border: none; color: var(--verde-osc); padding: 6px; }
   .barra .btn-menu svg { width: 26px; height: 26px; }
+  .barra .btn-actualizar { display: inline-flex; align-items: center; gap: 6px; }
+  .barra .btn-actualizar svg { width: 20px; height: 20px; min-width: 20px; flex: none; display: block; }
+  @media (max-width: 900px) { .barra .btn-actualizar { padding: 0; min-width: 44px; min-height: 44px; justify-content: center; } }
+  .barra .btn-actualizar.girando svg { animation: gira .8s linear infinite; }
   .contenido { padding: 20px; max-width: 1240px; width: 100%; }
   .velo { display: none; }
   @media (max-width: 900px) {
@@ -629,6 +633,7 @@
       lista: s('<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>'),
       fila: s('<rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h4M7 17h4"/>'),
       mas: s('<path d="M12 5v14M5 12h14"/>'),
+      actualizar: s('<path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/>'),
       hoja: s('<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>'),
       imprimir: s('<path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>'),
       vaso: '<svg viewBox="0 0 40 52"><path d="M4 8h32l-4 42H8z" opacity=".25"/><path d="M6 14h28l-3.4 34H9.4z"/><rect x="2" y="6" width="36" height="5" rx="2"/><rect x="22" y="0" width="3" height="10" rx="1.5"/></svg>'
@@ -728,13 +733,14 @@
     if (e && e.listo) {
       liberar();
       if (Date.now() - e.t > FRESCO_MS && !e.enCurso) {
-        e.enCurso = true;
+        e.enCurso = true; REFRESCANDO++;
         llamar(fn, args).then(function (r) {
+          finRefresco();
           var cambio = JSON.stringify(r) !== JSON.stringify(e.data);
           GUARDADO[k] = { listo: true, data: r, t: Date.now() }; guardarDisco();
           if (cambio && fn === 'adminInit') aplicarInit(r);
           if (cambio) repintarSiSeVe(fn);
-        }, function () { e.enCurso = false; });
+        }, function () { e.enCurso = false; finRefresco(true); });
       }
       return Promise.resolve(copia(e.data));
     }
@@ -774,6 +780,29 @@
     }, function () { PIDIENDO_VERSION = false; });
   }
   setInterval(revisarCambios, VIVO_MS);
+  /*
+   * Botón Actualizar (Samuel, 24 oct 2026): además del panel en vivo, trae ya mismo lo último de la pantalla abierta.
+   * Marca todo lo guardado como viejo y repinta: se ve lo que había y en un momento llega lo nuevo del servidor.
+   */
+  var REFRESCANDO = 0, PIDIO_ACTUALIZAR = false, FALLO_ACTUALIZAR = false;
+  function finRefresco(fallo) {
+    REFRESCANDO = Math.max(0, REFRESCANDO - 1);
+    if (fallo) FALLO_ACTUALIZAR = true;
+    if (REFRESCANDO || !PIDIO_ACTUALIZAR) return;
+    PIDIO_ACTUALIZAR = false;
+    if ($('btnActualizar')) $('btnActualizar').classList.remove('girando');
+    aviso(FALLO_ACTUALIZAR ? 'No se pudo actualizar: revisa la señal' : 'Actualizado', FALLO_ACTUALIZAR ? 'error' : 'exito');
+  }
+  function actualizarAhora() {
+    if (!SES || !AD.seccion || !$('vista') || PIDIO_ACTUALIZAR) return;
+    if (SIN_RED) { aviso('Sin señal: se muestran los últimos datos guardados', 'error'); return; }
+    Object.keys(GUARDADO).forEach(function (k) { if (GUARDADO[k].listo) { GUARDADO[k].t = 0; GUARDADO[k].enCurso = false; } });
+    PIDIO_ACTUALIZAR = true; FALLO_ACTUALIZAR = false;
+    $('btnActualizar').classList.add('girando');
+    var y = window.scrollY; VISTAS[AD.seccion](); window.scrollTo(0, y);
+    // Si la pantalla no tenía nada guardado, la vista la pide completa (con su propio "cargando"): no hay nada que esperar aquí.
+    setTimeout(function () { if (PIDIO_ACTUALIZAR && !REFRESCANDO) { REFRESCANDO = 1; finRefresco(); } }, 400);
+  }
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') revisarCambios(); });
 
   /** Precarga en segundo plano las pestañas del panel para que abran al instante. */
@@ -1847,6 +1876,7 @@
       '<div class="pie">' + esc(SES.nombre) + '<br>' + (lector ? 'Socio · solo lectura' : 'Administrador') + '</div></aside>' +
       '<div class="principal"><header class="barra"><button class="btn-menu" id="btnMenu" aria-label="Menú">' + ICON.menu + '</button>' +
       '<div class="titulo-seccion" id="tituloSeccion"></div>' +
+      '<button class="sec btn-actualizar" id="btnActualizar" title="Traer las últimas ventas y movimientos" aria-label="Actualizar">' + ICON.actualizar + '<span class="ocultar-movil">Actualizar</span></button>' +
       (lector ? '<span class="chip gris">Solo lectura</span>' :
       '<button class="sec ocultar-movil" id="btnLibro" title="Abrir el archivo contable">' + ICON.hoja + ' Archivo</button>' +
       '<button class="amarillo" id="btnVender">' + ICON.vender + ' Vender</button>') +
@@ -1857,6 +1887,7 @@
     $$('#nav a').forEach(function (a) { a.onclick = function (e) { e.preventDefault(); ir(a.getAttribute('data-sec')); cerrarMenu(); }; });
     $('btnMenu').onclick = function () { $('menu').classList.add('abierto'); $('velo').classList.add('visible'); };
     $('velo').onclick = cerrarMenu;
+    $('btnActualizar').onclick = actualizarAhora;
     if ($('btnVender')) $('btnVender').onclick = function () { guardarLocal('gp_vista', 'caja'); panelOperador(); };
     pintarRed();
     $('btnAvatar').onclick = function () {
