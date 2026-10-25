@@ -994,7 +994,8 @@
         // La primera pantalla llega con el ingreso: queda lista sin otra llamada al servidor.
         var k = function (fn) { return fn + '[]'; };
         if (d.adminInit) GUARDADO[k('adminInit')] = { listo: true, data: d.adminInit, t: Date.now() };
-        if (d.adminInicio) GUARDADO[k('adminInicio')] = { listo: true, data: d.adminInicio, t: Date.now() };
+        // Inicio viejo (el último de hoy): se pinta ya y se pide el actualizado en segundo plano.
+        if (d.adminInicio) GUARDADO[k('adminInicio')] = { listo: true, data: d.adminInicio, t: d.inicioViejo ? 0 : Date.now() };
         if (d.opInit) {
           var o = d.opInit;
           guardarLocal('gp_op_' + s.usuario, { productos: o.productos, canales: o.canales, categorias: o.categoriasCaja, srv: { turno: o.turno || null, ventas: o.ventas || [], gastos: o.gastos || [] }, marca: o.marca || null, t: Date.now(), fresco: true });
