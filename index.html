@@ -987,7 +987,10 @@
       ULTIMO_TOQUE = { b: $('btnIngresar'), t: Date.now() };
       var disp = leerLocal('gp_disp');
       if (!disp) { disp = idNuevo('D') + '-' + Math.random().toString(36).slice(2, 12).toUpperCase(); guardarLocal('gp_disp', disp); }
-      api('login', usuario, pin, disp, leerLocal('gp_vista') === 'caja' ? 'op' : 'panel').then(function (s) {
+      // Cuánto tardó el ingreso anterior en este celular: el servidor lo anota en el registro para medir la velocidad real.
+      var t0 = Date.now();
+      api('login', usuario, pin, disp, leerLocal('gp_vista') === 'caja' ? 'op' : 'panel', Number(leerLocal('gp_ms_ingreso')) || 0).then(function (s) {
+        guardarLocal('gp_ms_ingreso', Date.now() - t0);
         var d = s.datos || {}; delete s.datos;
         guardarLocal('gp_usuario', usuario);
         s.ini = Date.now();
