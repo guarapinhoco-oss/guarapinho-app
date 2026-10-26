@@ -2064,11 +2064,14 @@
         b.onclick = function (e) {
           e.stopPropagation();
           var n = r.alertas[Number(b.getAttribute('data-nomina'))];
-          confirmar('Registrar nómina', 'Se guarda en Registro Gastos como "Nómina operadores" con fecha de hoy: ' + esc(n.descripcion) + ', ' + pesos(n.valor) + '.', 'Registrar').then(function (si) {
-            if (!si) return;
-            api('adminGuardarGasto', { fecha: r.hoy, categoria: 'Nómina operadores', descripcion: n.descripcion, valor: n.valor })
-              .then(function () { aviso('Nómina registrada', 'exito'); vInicio(); }).catch(function (e) { aviso(e.message, 'error'); });
-          });
+          // Con "Pagado con" para que el pago se descuente de la cuenta de donde salió (sin él queda la alerta de gasto sin cuenta).
+          var mn = modal('Registrar nómina', '<p>Se guarda en Registro Gastos como "Nómina operadores" con fecha de hoy: ' + esc(n.descripcion) + ', <b>' + pesos(n.valor) + '</b>.</p>' +
+            '<label>Pagado con</label><select id="nPc"><option>Transferencia</option><option>Efectivo guardado</option></select>' +
+            '<div class="acciones"><button id="nG">Registrar</button></div>');
+          mn.querySelector('#nG').onclick = function () {
+            api('adminGuardarGasto', { fecha: r.hoy, categoria: 'Nómina operadores', descripcion: n.descripcion, valor: n.valor, pagadoCon: mn.querySelector('#nPc').value })
+              .then(function () { mn.cerrar(); aviso('Nómina registrada', 'exito'); vInicio(); }).catch(function (e) { aviso(e.message, 'error'); });
+          };
         };
       });
     }).catch(fallaVista);
