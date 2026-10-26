@@ -2253,21 +2253,33 @@
   }
   function vHoras() {
     var f = AD.fHoras || quincena(AD.hoy);
-    api('adminHoras', f.desde, f.hasta).then(function (r) {
+    api('adminHoras', f.desde, f.hasta, AD.hEmp || '').then(function (r) {
       AD.horas = r;
-      var v = r.valorHora, desc = r.descuentos || 0, neto = r.valor - desc, emp = r.empleados[0] || { usuario: '', nombre: 'Operador' };
+      var emp = r.empleados.filter(function (e) { return e.usuario === r.usuario; })[0] || { usuario: '', nombre: 'Operador' };
+      var sd = r.sueldo, v = r.valorHora, desc = r.descuentos || 0, neto = (sd ? sd.valor : 0) + r.valor - desc;
       var faltan = r.dias.filter(function (d) { return d.falta; }).length, nFaltas = r.nFaltas || 0, admin = SES.rol === 'ADMIN';
       var CHIP = { verificada: '<span class="chip">Verificada</span>', aprobada: '<span class="chip azul">Aprobada</span>', 'por aprobar': '<span class="chip rojo">Por aprobar</span>' };
+      var lics = r.licencias || [];
       $('vista').innerHTML =
-        '<p class="gris peq" style="margin-top:-6px">' + esc(emp.nombre) + ' marca entrada y salida en su app. Horario pactado ' + esc(r.horario.entrada) + ' a ' + esc(r.horario.salida) + ': lo que marque antes o después es hora extra (en bloques de 15 minutos). Valor por hora: diurna ' + pesos(v.diurna) + ', nocturna (desde las 7 p. m.) ' + pesos(v.nocturna) + '; domingo ' + pesos(v.diurnaDominical) + ' y ' + pesos(v.nocturnaDominical) + '.</p>' +
+        (r.empleados.length > 1 ? '<div class="filtros" style="margin-top:-6px">' + r.empleados.map(function (e) {
+          return '<div style="flex:0 0 auto"><button class="' + (e.usuario === r.usuario ? '' : 'sec') + '" data-emp="' + esc(e.usuario) + '">' + esc(e.nombre.split(' ')[0]) + (e.activo ? '' : ' <span class="peq">(inactivo)</span>') + '</button></div>';
+        }).join('') + '</div>' : '') +
+        (r.ingreso && r.ingreso > r.desde ? '<div class="alerta ok">' + esc(emp.nombre) + ' empieza el ' + fechaCorta(r.ingreso) + ': los días antes no se le pagan.</div>' : '') +
+        lics.map(function (l, i) {
+          return '<div class="alerta" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="flex:1">Licencia sin sueldo ' + (l.hasta ? 'del ' + fechaCorta(l.desde) + ' al ' + fechaCorta(l.hasta) : 'desde el ' + fechaCorta(l.desde) + ', sin fecha de regreso') + '. Esos días no se pagan ni cuentan como falta.</span>' +
+            (admin ? '<button class="peq sec" data-lic="' + i + '">' + (l.hasta ? 'Cambiar' : 'Ya regresó') + '</button>' : '') + '</div>';
+        }).join('') +
+        '<p class="gris peq"' + (r.empleados.length > 1 || lics.length ? '' : ' style="margin-top:-6px"') + '>' + esc(emp.nombre) + ' marca entrada y salida en su app. Horario pactado ' + esc(r.horario.entrada) + ' a ' + esc(r.horario.salida) + ': lo que marque antes o después es hora extra (en bloques de 15 minutos). Valor por hora: diurna ' + pesos(v.diurna) + ', nocturna (desde las 7 p. m.) ' + pesos(v.nocturna) + '; domingo ' + pesos(v.diurnaDominical) + ' y ' + pesos(v.nocturnaDominical) + '.</p>' +
         (r.valorDia ? '<p class="gris peq">Lo que llegue tarde o salga antes se cruza hora por hora con las extras del mismo día; si falta más de lo que sobra, se descuenta a ' + pesos(r.horaOrdinaria) + ' la hora. Un día que se abrió caja y no marcó nada es <b>falta</b> y se descuenta ' + pesos(r.valorDia) + ' (un día de sueldo), salvo que lo marques como permiso.</p>' : '') +
         '<p class="gris peq">Cada marca se verifica sola: se guarda con la hora del servidor (no la del celular) y con el GPS, que debe estar a menos de ' + r.radioM + ' m del punto. Si una marca se hizo sin señal, sin GPS o lejos del punto, las extras de ese día quedan <b>por aprobar</b> y no se pagan hasta que las apruebes.</p>' +
         (r.punto ? '<p class="gris peq">Ubicación del punto fijada el ' + esc(r.punto.fecha) + ' por ' + esc(r.punto.por) + '.' + (admin ? ' <a href="#" id="hPunto">Volver a fijarla</a>' : '') + '</p>'
           : '<div class="alerta" id="hPuntoA">Falta fijar la ubicación del punto: sin ella ninguna marca queda verificada.' + (admin ? ' Párate en el punto y toca aquí.' : ' Debe hacerlo un administrador desde el punto.') + '</div>') +
         '<div class="filtros"><div style="flex:0 0 auto"><button class="sec" id="hAnt">‹ Quincena anterior</button></div><div style="flex:0 0 auto"><button class="sec" id="hAct">Quincena actual</button></div>' +
         '<div><label>Desde</label><input type="date" id="hDesde" value="' + esc(r.desde) + '"></div><div><label>Hasta</label><input type="date" id="hHasta" value="' + esc(r.hasta) + '"></div><div style="flex:0 0 auto"><button class="sec" id="hVer">Ver</button></div>' +
-        '<div style="flex:0 0 auto"><button class="amarillo" id="hNuevo">' + ICON.mas + ' Corregir un día</button></div></div>' +
-        '<div class="kpis">' + (r.valorDia ? kpi('Ajuste a la nómina', (neto < 0 ? '−' : '') + pesos(Math.abs(neto)), fechaCorta(r.desde) + ' al ' + fechaCorta(r.hasta), 'destacado') +
+        '<div style="flex:0 0 auto"><button class="amarillo" id="hNuevo">' + ICON.mas + ' Corregir un día</button></div>' +
+        (admin && r.valorDia ? '<div style="flex:0 0 auto"><button class="sec" id="hLic">Licencia sin sueldo</button></div>' : '') + '</div>' +
+        '<div class="kpis">' + (r.valorDia ? kpi('A pagar', (neto < 0 ? '−' : '') + pesos(Math.abs(neto)), fechaCorta(r.desde) + ' al ' + fechaCorta(r.hasta) + ': sueldo + extras − descuentos', 'destacado') +
+          kpi('Sueldo', pesos(sd ? sd.valor : 0), sd ? (sd.licencia || sd.antesIngreso ? sd.dias + ' día' + (sd.dias === 1 ? '' : 's') + ' a ' + pesos(r.valorDia) + [sd.licencia ? sd.licencia + ' de licencia' : '', sd.antesIngreso ? sd.antesIngreso + ' antes de entrar' : ''].filter(String).map(function (t) { return ' · ' + t; }).join('') : 'Medio sueldo de ' + pesos(r.sueldoMes)) : '') +
           kpi('Horas extra a pagar', pesos(r.valor), horasMin(r.minutos) + ' después del cruce') +
           kpi('Descuentos', (desc ? '−' : '') + pesos(desc), [nFaltas ? nFaltas + ' falta' + (nFaltas === 1 ? '' : 's') : '', r.minutosFalta ? horasMin(r.minutosFalta) + ' sin trabajar' : ''].filter(String).join(' · ') || 'Sin faltas', desc ? 'negativo' : '')
           : kpi('Horas extra a pagar', pesos(r.valor), fechaCorta(r.desde) + ' al ' + fechaCorta(r.hasta), 'destacado') + kpi('Horas extra', horasMin(r.minutos), r.dias.length + ' día' + (r.dias.length === 1 ? '' : 's') + ' marcados')) +
@@ -2276,8 +2288,8 @@
         (r.dias.length ? '<div class="tabla-scroll"><table><thead><tr><th>Día</th><th>Entrada</th><th>Salida</th><th class="n">Extra diurna</th><th class="n">Extra nocturna</th><th class="n">Valor</th><th>Verificación</th><th>Caja</th><th>Nota</th></tr></thead><tbody>' + r.dias.map(function (d, i) {
           var c = d.caja;
           var dia = '<tr class="clic" data-h="' + i + '"><td>' + diaSemana(d.fecha) + ' ' + fechaCorta(d.fecha).slice(0, 5) + (d.domingo ? ' <span class="chip">domingo</span>' : '') + '</td>';
-          if (d.ausencia) return dia + '<td colspan="2">' + (d.ausencia === 'FALTA' ? '<span class="chip rojo">Faltó</span>' : '<span class="chip azul">Permiso</span>') + '</td><td class="n">0:00</td><td class="n">0:00</td>' +
-            '<td class="n">' + (d.descuento ? '<span style="color:var(--rojo)">−' + pesos(d.descuento) + '</span>' : pesos(0)) + '</td><td class="peq">' + (d.auto ? 'Sin marcas con caja abierta' : d.ausencia === 'FALTA' ? 'Se descuenta un día' : 'No se descuenta') + '</td>' +
+          if (d.ausencia) return dia + '<td colspan="2">' + (d.ausencia === 'FALTA' ? '<span class="chip rojo">Faltó</span>' : d.ausencia === 'LICENCIA' ? '<span class="chip">Licencia</span>' : '<span class="chip azul">Permiso</span>') + '</td><td class="n">0:00</td><td class="n">0:00</td>' +
+            '<td class="n">' + (d.descuento ? '<span style="color:var(--rojo)">−' + pesos(d.descuento) + '</span>' : pesos(0)) + '</td><td class="peq">' + (d.ausencia === 'LICENCIA' ? 'No se paga' : d.auto ? 'Sin marcas con caja abierta' : d.ausencia === 'FALTA' ? 'Se descuenta un día' : 'No se descuenta') + '</td>' +
             '<td class="peq">' + (c ? (c.apertura ? 'Abrió ' + esc(c.apertura) : '') + (c.cierre ? (c.apertura ? ' · ' : '') + 'cerró ' + esc(horaTurno(c.cierre)) : '') : '<span class="gris">—</span>') + '</td>' +
             '<td class="peq">' + esc(d.nota) + (d.editadoPor ? ' <span class="gris">(corrigió ' + esc(d.editadoPor) + ')</span>' : '') + '</td></tr>';
           var cruce = (d.cruce ? '<div class="gris peq">Cruce ' + horasMin(d.cruce) + '</div>' : '') + (d.faltaMin ? '<div class="peq" style="color:var(--rojo)">Faltaron ' + horasMin(d.faltaMin) + '</div>' : '');
@@ -2291,6 +2303,9 @@
       $('hAct').onclick = function () { AD.fHoras = null; vHoras(); };
       $('hVer').onclick = function () { AD.fHoras = { desde: $('hDesde').value, hasta: $('hHasta').value }; vHoras(); };
       $('hNuevo').onclick = function () { formHoras(emp, null); };
+      $$('[data-emp]').forEach(function (b) { b.onclick = function () { AD.hEmp = b.getAttribute('data-emp'); vHoras(); }; });
+      if ($('hLic')) $('hLic').onclick = function () { formLicencia(emp, -1, null); };
+      $$('[data-lic]').forEach(function (b) { b.onclick = function () { var i = Number(b.getAttribute('data-lic')); formLicencia(emp, i, lics[i]); }; });
       var fijar = function (e) { if (e) e.preventDefault(); if (admin) fijarPunto(); };
       if ($('hPunto')) $('hPunto').onclick = fijar;
       if ($('hPuntoA')) $('hPuntoA').onclick = fijar;
@@ -2315,8 +2330,9 @@
     };
     if (d.ausencia) {
       var ma = modal(diaSemana(d.fecha) + ' ' + fechaCorta(d.fecha),
-        '<p><b>' + (d.ausencia === 'FALTA' ? 'Faltó' : 'Permiso') + '</b> · ' + (d.descuento ? 'se descuentan ' + pesos(d.descuento) + ' (un día de sueldo)' : 'no se descuenta') + '</p>' +
-        (d.auto ? '<p class="gris peq">No hay ninguna marca y ese día se abrió caja' + (c && c.apertura ? ' (abrió ' + esc(c.apertura) + ')' : '') + '. Si sí vino, corrige el día con su entrada y salida; si tenía permiso, márcalo como permiso.</p>' : '') +
+        (d.ausencia === 'LICENCIA' ? '<p><b>Licencia sin sueldo</b> · este día no se paga.</p><p class="gris peq">Si sí vino a trabajar, corrige el día con su entrada y salida y se le paga.</p>' :
+        '<p><b>' + (d.ausencia === 'FALTA' ? 'Faltó' : 'Permiso') + '</b> · ' + (d.descuento ? 'se descuentan ' + pesos(d.descuento) + ' (un día de sueldo)' : 'no se descuenta') + '</p>') +
+        (d.auto && d.ausencia !== 'LICENCIA' ? '<p class="gris peq">No hay ninguna marca y ese día se abrió caja' + (c && c.apertura ? ' (abrió ' + esc(c.apertura) + ')' : '') + '. Si sí vino, corrige el día con su entrada y salida; si tenía permiso, márcalo como permiso.</p>' : '') +
         (admin ? '<div class="acciones"><button class="sec" id="hC">Corregir</button></div>' : ''));
       if (ma.querySelector('#hC')) ma.querySelector('#hC').onclick = function () { ma.cerrar(); formHoras(emp, d); };
       return;
@@ -2331,6 +2347,22 @@
     if (m.querySelector('#hC')) m.querySelector('#hC').onclick = function () { m.cerrar(); formHoras(emp, d); };
     if (m.querySelector('#hA')) m.querySelector('#hA').onclick = function () {
       api('adminAprobarHoras', { fecha: d.fecha, usuario: d.usuario }).then(function () { m.cerrar(); aviso('Horas aprobadas', 'exito'); vHoras(); }).catch(function (e) { aviso(e.message, 'error'); });
+    };
+  }
+  function formLicencia(emp, i, l) {
+    var nueva = i < 0;
+    var m = modal((nueva ? 'Licencia sin sueldo de ' : 'Licencia de ') + esc(emp.nombre.split(' ')[0]),
+      '<p class="gris peq">Los días de licencia no se pagan y no cuentan como falta. Si no sabes cuándo regresa, deja vacío el último día y lo escribes cuando vuelva.</p>' +
+      '<div class="grid2"><div><label>Primer día sin trabajar</label><input type="date" id="lD" value="' + esc(l ? l.desde : sumarDias(AD.hoy, 1)) + '"></div>' +
+      '<div><label>Último día de licencia</label><input type="date" id="lH" value="' + esc(l ? l.hasta : '') + '"></div></div>' +
+      (l && !l.hasta ? '<p class="gris peq">Si ya regresó, escribe como último día el anterior a su regreso.</p>' : '') +
+      '<div class="acciones">' + (nueva ? '' : '<button class="sec" id="lQ">Quitar licencia</button>') + '<button id="lG">Guardar</button></div>');
+    var enviar = function (x) {
+      api('adminLicencia', Object.assign({ usuario: emp.usuario, indice: nueva ? '' : i }, x)).then(function () { m.cerrar(); aviso('Licencia guardada', 'exito'); vHoras(); }).catch(function (e) { aviso(e.message, 'error'); });
+    };
+    m.querySelector('#lG').onclick = function () { enviar({ desde: m.querySelector('#lD').value, hasta: m.querySelector('#lH').value }); };
+    if (m.querySelector('#lQ')) m.querySelector('#lQ').onclick = function () {
+      confirmar('Quitar licencia', 'Esos días vuelven a contar como trabajados o como falta si no marcó.', 'Quitar').then(function (si) { if (si) enviar({ quitar: true }); });
     };
   }
   function formHoras(emp, d) {
