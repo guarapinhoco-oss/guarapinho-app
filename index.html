@@ -108,6 +108,7 @@
   .fila { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .fila > * { flex: 1 1 0; min-width: 0; }
   .fila > .auto { flex: 0 0 auto; }
+  .dias-desc { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-top: 6px; } .dias-desc button { padding: 8px 2px; min-width: 0; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .num { font-variant-numeric: tabular-nums; }
   .tarjeta { background: #fff; border-radius: var(--radio); box-shadow: var(--sombra); padding: 16px; }
@@ -2046,13 +2047,15 @@
         '<div class="tarjeta" style="margin-top:16px"><h2>Pendientes</h2>' + (r.alertas.length ? r.alertas.map(function (a, i) { return '<div class="alerta" data-tipo="' + a.tipo + '">⚠ <span style="flex:1">' + esc(a.texto) + (a.tipo === 'nomina' && SES.rol === 'ADMIN' ? '<br><button class="peq" data-nomina="' + i + '" style="margin-top:8px">Registrar pago de hoy</button>' : '') + '</span></div>'; }).join('') : '<div class="alerta ok">Todo al día.</div>') + '</div>' +
         '<div class="tarjeta" style="margin-top:16px"><h2>Vasos por hora · hoy</h2>' + (horas.length ? barras(horas, 'v', function (x) { return x.h + 'h'; }) : '<div class="vacio">Sin ventas hoy.</div>') + '</div>' +
         '</div></div>';
-      $$('[data-descanso]').forEach(function (sel) {
-        sel.onchange = function () {
-          var semana = sel.getAttribute('data-descanso'), dia = Number(sel.value);
-          sel.disabled = true;
-          api('adminFijarDescanso', semana, dia).then(function () {
-            aviso(dia < 0 ? 'Esa semana se abre todos los días' : 'Descanso: ' + DIAS_SEMANA[dia], 'exito'); vInicio();
-          }).catch(function (e) { sel.disabled = false; aviso(e.message, 'error'); vInicio(); });
+      $$('[data-descanso]').forEach(function (b) {
+        b.onclick = function () {
+          var semana = b.getAttribute('data-descanso');
+          b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+          var dias = $$('[data-descanso="' + semana + '"]').filter(function (x) { return x.getAttribute('aria-pressed') === 'true'; }).map(function (x) { return Number(x.getAttribute('data-dia')); });
+          $$('[data-descanso="' + semana + '"]').forEach(function (x) { x.disabled = true; });
+          api('adminFijarDescanso', semana, dias).then(function () {
+            aviso(dias.length ? 'Descanso: ' + dias.map(function (d) { return DIAS_SEMANA[d]; }).join(' y ') : 'Esa semana se abre todos los días', 'exito'); vInicio();
+          }).catch(function (e) { aviso(e.message, 'error'); vInicio(); });
         };
       });
       if ($('kEfectivo')) $('kEfectivo').onclick = function () { verCuenta('efectivo', lq); };
@@ -2085,20 +2088,23 @@
   function tarjetaDescanso(ds) {
     if (!ds) return '';
     var orden = [1, 2, 3, 4, 5, 6, 0];
+    var lista = function (dias, dia) { return dias || (dia >= 0 ? [dia] : []); }; // el servidor anterior solo mandaba un día
     var rango = function (lunes) { return fechaCorta(lunes).slice(0, 5) + ' al ' + fechaCorta(sumarDias(lunes, 6)).slice(0, 5); };
-    var nombre = function (d) { return d < 0 ? 'ninguno, se abre todos los días' : DIAS_SEMANA[d]; };
+    var nombres = function (dias) { return dias.length ? dias.map(function (d) { return DIAS_SEMANA[d]; }).join(' y ') : 'ninguno, se abre todos los días'; };
     var editable = SES.rol === 'ADMIN';
-    var fila = function (titulo, lunes, dia) {
-      return '<div class="fila" style="align-items:center;margin-top:8px"><div><div class="gris peq">' + titulo + ' · ' + rango(lunes) + '</div>' +
-        (editable ? '<select data-descanso="' + lunes + '" aria-label="Día de descanso ' + titulo.toLowerCase() + '" style="margin-top:4px">' +
-          orden.concat([-1]).map(function (d) { return '<option value="' + d + '"' + (d === dia ? ' selected' : '') + '>' + (d < 0 ? 'Sin descanso' : DIAS_SEMANA[d].charAt(0).toUpperCase() + DIAS_SEMANA[d].slice(1)) + (d === ds.sugerido ? ' (sugerido)' : '') + '</option>'; }).join('') + '</select>'
-          : '<b>' + esc(nombre(dia)) + '</b>') + '</div></div>';
+    var fila = function (titulo, lunes, dias) {
+      return '<div style="margin-top:10px"><div class="gris peq">' + titulo + ' · ' + rango(lunes) + ' · descansa: <b>' + esc(nombres(dias)) + '</b></div>' +
+        (editable ? '<div class="dias-desc" role="group" aria-label="Días de descanso ' + titulo.toLowerCase() + '">' + orden.map(function (d) {
+          var on = dias.indexOf(d) >= 0;
+          return '<button type="button" class="' + (on ? '' : 'sec ') + 'peq" data-descanso="' + lunes + '" data-dia="' + d + '" aria-pressed="' + on + '" title="' + DIAS_SEMANA[d] + (d === ds.sugerido ? ' (sugerido)' : '') + '">' +
+            DIAS_SEMANA[d].slice(0, 3) + (d === ds.sugerido ? ' ★' : '') + '</button>';
+        }).join('') + '</div>' : '') + '</div>';
     };
     var proms = orden.map(function (d) { var p = ds.promedios[d]; return '<span' + (d === ds.sugerido ? ' style="font-weight:700"' : '') + '>' + DIAS_SEMANA[d].slice(0, 3) + ' ' + (p.promedio === null ? '—' : p.promedio) + '</span>'; }).join(' · ');
-    return '<div class="tarjeta" style="margin-top:16px"><h2>Día de descanso</h2>' +
-      '<p class="gris peq" style="margin-top:-6px">Ese día no cuenta para la meta diaria ni para las faltas. ' +
-      (ds.sugerido !== null ? 'Sugerido: <b>' + DIAS_SEMANA[ds.sugerido] + '</b>, el día que menos vende.' : 'Todavía no hay ventas para sugerir un día.') + '</p>' +
-      fila('Esta semana', ds.semana, ds.dia) + fila('Próxima semana', ds.siguiente, ds.diaSiguiente) +
+    return '<div class="tarjeta" style="margin-top:16px"><h2>Días de descanso</h2>' +
+      '<p class="gris peq" style="margin-top:-6px">Los días de descanso no cuentan para la meta diaria ni para las faltas. ' + (editable ? 'Toca un día para marcarlo o quitarlo; puede haber varios o ninguno. ' : '') +
+      (ds.sugerido !== null ? 'Sugerido (★): <b>' + DIAS_SEMANA[ds.sugerido] + '</b>, el día que menos vende.' : 'Todavía no hay ventas para sugerir un día.') + '</p>' +
+      fila('Esta semana', ds.semana, lista(ds.dias, ds.dia)) + fila('Próxima semana', ds.siguiente, lista(ds.diasSiguiente, ds.diaSiguiente)) +
       '<div class="gris peq" style="margin-top:10px">Vasos promedio por día, últimas 4 semanas: ' + proms + '</div></div>';
   }
 
