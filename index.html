@@ -1059,7 +1059,7 @@
       '<button data-tab="ventas">' + ICON.lista + '<span>Ventas</span></button>' +
       '<button data-tab="gastos">' + ICON.gastos + 'Gastos</button>' +
       '<button data-tab="cierre">' + ICON.cierre + 'Cierre</button></nav>';
-    $('btnSalir').onclick = function () { confirmar('Salir', '¿Cerrar la sesión de ' + esc(SES.nombre) + '? La caja sigue abierta.' + (PED.length ? ' Hay <b>' + PED.length + ' pedido(s) en la fila</b>: quedan guardados en este celular.' : '') + (cola().length ? ' Hay ' + cola().length + ' movimiento(s) por enviar: se envían cuando vuelva a entrar con internet.' : ''), 'Salir').then(function (s) { if (s) cerrarSesion(false); }); };
+    $('btnSalir').onclick = function () { confirmar('Salir', '¿Cerrar la sesión de ' + esc(SES.nombre) + '? La caja sigue abierta.' + (PED.length ? ' Hay <b>' + PED.length + ' pedido(s) en la fila</b>: siguen en la fila.' : '') + (cola().length ? ' Hay ' + cola().length + ' movimiento(s) por enviar: se envían cuando vuelva a entrar con internet.' : ''), 'Salir').then(function (s) { if (s) cerrarSesion(false); }); };
     if ($('btnAdmin')) $('btnAdmin').onclick = function () { guardarLocal('gp_vista', 'panel'); panelAdmin(); };
     $$('#navOp button').forEach(function (b) { b.onclick = function () { opIr(b.getAttribute('data-tab')); }; });
     OP.carrito = leerLocal('gp_carrito') || [];
@@ -1096,6 +1096,9 @@
   function opAplicarEstado(r) {
     OP.srv = { turno: r.turno || null, ventas: r.ventas || [], gastos: r.gastos || [] };
     derivar(); guardarOp(); pintarEstadoCaja();
+    // La caja la cerró otro celular: la fila de ese turno ya no va.
+    if (!OP.turno && !pendientes() && filaTodos().some(function (x) { return x.turno; })) filaReiniciar(true);
+    else sincFila();
   }
   function derivar() {
     var srv = OP.srv || { turno: null, ventas: [], gastos: [] };
@@ -1291,18 +1294,25 @@
 
   // ---------- Fila de pedidos (comanda) ----------
   // Cada pedido entra a la fila apenas se toma, con un número del turno y la seña del cliente (camiseta + una palabra).
-  // Servido y cobrado son marcas aparte: sale de la fila solo con las dos, o cancelado con motivo. Todo queda en este
-  // celular (PED = en la fila, FH = ya terminados en este turno) y el resumen viaja al servidor en la nota del cierre.
+  // Servido y cobrado son marcas aparte: sale de la fila solo con las dos, o cancelado con motivo. El celular guarda la
+  // fila (PED = en la fila, FH = ya terminados en este turno) y la comparte con los otros celulares del punto (sincFila);
+  // el resumen viaja al servidor en la nota del cierre.
   var FH = leerLocal('gp_fila_hist') || [];
   var COLORES = [['Roja', '#d62f2f'], ['Negra', '#1d1d1d'], ['Blanca', '#ffffff'], ['Azul', '#2457c5'], ['Verde', '#2e9b45'], ['Amarilla', '#ffd21f'], ['Gris', '#9aa3a0'], ['Rosada', '#f28bb8'], ['Naranja', '#f57c1f'], ['Café', '#7a4b2a']];
   var PALABRAS = ['Señor', 'Señora', 'Joven', 'Niño', 'Niña', 'Pareja', 'Gorra', 'Gafas', 'Moto', 'Perro'];
   var MOTIVOS = ['Se equivocó al tomarlo', 'El cliente cambió de idea', 'Se fue sin pagar', 'Otro'];
-  function guardarFH() { guardarLocal('gp_fila_hist', FH); }
-  function filaNum() { var n = (Number(leerLocal('gp_fila_num')) || 0) + 1; guardarLocal('gp_fila_num', n); return n; }
-  function filaReiniciar() { if (PED.length) return; FH = []; guardarFH(); guardarLocal('gp_fila_num', 0); }
+  function guardarFH() { sellarFila(FH); guardarLocal('gp_fila_hist', FH); programarFila(); }
+  /** Siguiente número del turno: uno más que el mayor de la fila (la de todos los celulares). */
+  function filaNum() { return PED.concat(FH).reduce(function (a, x) { return Math.max(a, Number(x.num) || 0); }, 0) + 1; }
+  function filaReiniciar(forzar) {
+    if (PED.length && !forzar) return;
+    if (forzar) PED = [];
+    FH = []; FBASE = {}; guardarLocal('gp_pedidos', PED); guardarLocal('gp_fila_hist', FH); guardarLocal('gp_fila_base', FBASE); borrarLocal('gp_fila_num');
+    pintarEstadoCaja();
+  }
   function guardarPedidos() {
     PED.forEach(function (x) { if (!x.num) x.num = filaNum(); }); // pedidos guardados antes de la fila
-    guardarLocal('gp_pedidos', PED); pintarEstadoCaja();
+    sellarFila(PED); guardarLocal('gp_pedidos', PED); pintarEstadoCaja(); programarFila();
   }
   function pedidoActivo() { return OP.pedidoActivo ? PED.filter(function (x) { return x.id === OP.pedidoActivo; })[0] || null : null; }
   function totalItems(items) { return items.reduce(function (a, it) { var p = buscarProducto(it.producto); return a + (p ? p.precio * it.cantidad : 0); }, 0); }
@@ -1327,7 +1337,7 @@
   function quitarPedido(id) { if (!id) return; PED = PED.filter(function (x) { return x.id !== id; }); guardarPedidos(); }
   /** Saca el pedido de la fila y lo deja en el historial del turno (para el resumen del cierre). */
   function terminarPedido(x, extra) {
-    FH.push(Object.assign({ num: x.num, nombre: x.nombre, creado: x.creado, servido: x.servido || null, cobrado: x.cobrado || null, directo: !!x.directo }, extra || {}));
+    FH.push(Object.assign({}, x, { servido: x.servido || null, cobrado: x.cobrado || null, directo: !!x.directo }, extra || {}));
     guardarFH(); quitarPedido(x.id);
   }
 
@@ -1359,13 +1369,13 @@
   /** "A la fila": guarda el carrito como pedido con su número y la seña del cliente. Si se está editando uno, lo actualiza. */
   function guardarPedido() {
     if (OP.pedidoActivo) { var pa = pedidoActivo(); soltarCarrito(); aviso((pa ? nombrePedido(pa) : 'Pedido') + ' actualizado. Sigue en la fila.', 'exito'); pintarVender(); pintarCarrito(); return; }
-    var num = (Number(leerLocal('gp_fila_num')) || 0) + 1;
+    var num = filaNum();
     var m = modal('¿Quién es? · Pedido #' + num, '<p class="gris peq" style="margin-top:0">' + vasosCarrito() + ' vaso(s) · ' + pesos(totalCarrito()) + '. Toque el color de la camiseta y una palabra.</p>' + htmlSena(false) +
       '<div class="vista-ref"><small>Así sale en la fila</small><span id="mRef">#' + num + '</span></div>' +
       '<div class="acciones"><button class="sec" id="mSinSena">Sin seña</button><button class="amarillo" id="mPedOk">Enviar a la fila</button></div>');
     var leer = activarSena(m, function () { var r = leer(); m.querySelector('#mRef').textContent = '#' + num + (r ? ' · ' + r : ''); });
     var ok = function (ref) {
-      var x = { id: idNuevo('P'), num: filaNum(), nombre: ref, items: JSON.parse(JSON.stringify(OP.carrito)), creado: Date.now(), usuario: SES.usuario, servido: null, cobrado: null };
+      var x = { id: idNuevo('P'), turno: OP.turno.id, num: filaNum(), nombre: ref, items: JSON.parse(JSON.stringify(OP.carrito)), creado: Date.now(), usuario: SES.usuario, quien: SES.nombre, servido: null, cobrado: null };
       PED.push(x); soltarCarrito(); guardarPedidos(); m.cerrar(); vibrar(15);
       aviso(nombrePedido(x) + ' quedó en la fila', 'exito'); pintarVender(); pintarCarrito();
     };
@@ -1397,7 +1407,7 @@
     var acc = (!x.cobrado ? '<button class="' + (serv ? 'amarillo' : 'sec') + '" data-cobrar="' + esc(x.id) + '">Cobrar' + (serv ? ' ' + pesos(totalItems(x.items)) : '') + '</button>' : '') +
       (!serv ? '<button data-servido="' + esc(x.id) + '">✓ Servido</button>' : '');
     return '<div class="tk ' + cls + '" data-tk="' + esc(x.id) + '"><div class="cab"><span class="n">#' + x.num + '</span><span class="ref">' + (x.nombre ? esc(x.nombre) : 'Sin seña') +
-      '<small>' + (serv ? 'Servido ' + horaDe(x.servido) : 'Tomado ' + horaDe(x.creado)) + '</small></span><span class="min">' + min + ' min</span></div>' +
+      '<small>' + (serv ? 'Servido ' + horaDe(x.servido) : 'Tomado ' + horaDe(x.creado)) + (x.quien ? ' · ' + esc(primerNombre(x.quien)) : '') + '</small></span><span class="min">' + min + ' min</span></div>' +
       '<ul>' + items + '</ul><div class="est">' + est + '</div><div class="acc">' + acc + '</div></div>';
   }
 
@@ -1440,7 +1450,8 @@
 
   function abrirPedido(id) {
     var x = PED.filter(function (y) { return y.id === id; })[0]; if (!x) return;
-    var m = modal(nombrePedido(x), '<p class="gris" style="margin-top:0">Tomado ' + horaDe(x.creado) + ' (hace ' + minutosDesde(x.creado) + ' min)' + (x.servido ? ' · servido ' + horaDe(x.servido) : '') + (x.cobrado ? ' · cobrado' : '') + '</p>' +
+    sincFila(); // si el otro celular ya lo cobró, el carrito se suelta solo
+    var m = modal(nombrePedido(x), '<p class="gris" style="margin-top:0">Tomado ' + horaDe(x.creado) + ' (hace ' + minutosDesde(x.creado) + ' min)' + (x.quien ? ' por ' + esc(primerNombre(x.quien)) : '') + (x.servido ? ' · servido ' + horaDe(x.servido) : '') + (x.cobrado ? ' · cobrado' : '') + '</p>' +
       '<div class="lista">' + x.items.map(function (it) { var p = buscarProducto(it.producto); return '<div class="item"><div class="d"><b>' + it.cantidad + '× ' + esc(it.producto) + '</b>' + (it.opcion ? '<span>' + esc(it.opcion) + '</span>' : '') + '</div><div class="v">' + pesos(p ? p.precio * it.cantidad : 0) + '</div></div>'; }).join('') + '</div>' +
       '<div class="linea-carrito" style="border:none"><div class="d"><b>Total</b></div><b class="total-grande" style="font-size:24px">' + pesos(totalItems(x.items)) + '</b></div>' +
       (x.cobrado
@@ -1472,18 +1483,81 @@
 
   /** Lo que pasa con la fila al registrar una venta. */
   function filaTrasCobro(venta, ref, entregado) {
-    var cob = { medio: venta.medio, total: venta.total, hora: Date.now(), venta: venta.id };
+    var cob = { medio: venta.medio, total: venta.total, hora: Date.now(), venta: venta.id, quien: SES.nombre };
     var pa = pedidoActivo();
     if (pa) {
       pa.cobrado = cob; pa.items = JSON.parse(JSON.stringify(OP.carrito));
       if (pa.servido) terminarPedido(pa); else guardarPedidos();
       return pa;
     }
-    var x = { id: idNuevo('P'), num: filaNum(), nombre: ref, items: JSON.parse(JSON.stringify(OP.carrito)), creado: Date.now(), usuario: SES.usuario, servido: null, cobrado: cob };
-    if (entregado) { x.servido = x.creado; x.directo = true; FH.push({ num: x.num, nombre: x.nombre, creado: x.creado, servido: x.servido, cobrado: cob, directo: true }); guardarFH(); }
+    var x = { id: idNuevo('P'), turno: OP.turno.id, num: filaNum(), nombre: ref, items: JSON.parse(JSON.stringify(OP.carrito)), creado: Date.now(), usuario: SES.usuario, quien: SES.nombre, servido: null, cobrado: cob };
+    if (entregado) { x.servido = x.creado; x.directo = true; FH.push(x); guardarFH(); }
     else { PED.push(x); guardarPedidos(); }
     return x;
   }
+
+  // ---------- Fila compartida entre celulares ----------
+  // Samuel (30 oct 2026): lo que un operador manda a la fila lo ve el otro. Cada pocos segundos el celular manda a opFila los
+  // pedidos que cambió y recibe la fila completa del turno. FBASE guarda, por pedido, cómo lo dejó el servidor la última vez:
+  // si el del celular es distinto, lo cambió este celular y se manda; si es igual, se toma lo del servidor (pudo cambiarlo otro).
+  var FBASE = leerLocal('gp_fila_base') || {}, FILA_SRV = true, FILA_ENV = false, T_FILA = null;
+  function filaClave(x) { return JSON.stringify([x.num, x.nombre || '', x.items, x.servido || null, x.cobrado || null, x.cancelado || null, !!x.directo]); }
+  function filaTerminado(x) { return !!(x.cancelado || (x.servido && x.cobrado)); }
+  function filaTodos() { return PED.concat(FH.filter(function (x) { return x.id; })); }
+  /** Marca la hora del último cambio de cada pedido (la usa el servidor para saber qué edición es la más nueva). */
+  function sellarFila(lista) { lista.forEach(function (x) { if (!x.id) return; var k = filaClave(x); if (x._k !== k) { x._k = k; x.act = Date.now(); } }); }
+  function primerNombre(n) { n = String(n || '').trim().split(/\s+/)[0]; return n.charAt(0).toUpperCase() + n.slice(1); }
+  function programarFila() { clearTimeout(T_FILA); T_FILA = setTimeout(sincFila, 300); }
+  function sincFila() {
+    if (!FILA_SRV || FILA_ENV || !SES || SES.rol === 'SOCIO' || !$('opVista') || !OP.turno || /^L-/.test(OP.turno.id)) return;
+    var turno = OP.turno.id;
+    filaTodos().forEach(function (x) { if (!x.turno) x.turno = turno; }); // pedidos de antes de la fila compartida
+    var sucios = filaTodos().filter(function (x) { return x.turno === turno && FBASE[x.id] !== filaClave(x); }), enviados = {};
+    sucios.forEach(function (x) { enviados[x.id] = filaClave(x); });
+    FILA_ENV = true;
+    llamar('opFila', [turno, sucios.map(function (x) { var y = Object.assign({}, x); delete y._k; return y; })]).then(function (r) {
+      FILA_ENV = false;
+      if (r && r.turno && OP.turno && OP.turno.id === turno) fundirFila(r, enviados);
+    }, function (e) {
+      FILA_ENV = false;
+      if (/no permitida|not found|no se encontr/i.test(e.message)) FILA_SRV = false; // el servidor todavía no tiene la fila compartida
+    });
+  }
+  function fundirFila(r, enviados) {
+    var antes = JSON.stringify(PED.map(filaClave)) + FH.length;
+    var loc = {}; filaTodos().forEach(function (x) { loc[x.id] = x; });
+    var activo = OP.pedidoActivo, lista = [], vistos = {}, base = {};
+    (r.pedidos || []).forEach(function (s) {
+      vistos[s.id] = 1; base[s.id] = filaClave(s);
+      var x = loc[s.id];
+      if (x && FBASE[x.id] !== filaClave(x) && enviados[x.id] !== filaClave(x)) {
+        // Lo cambiaron en este celular mientras se enviaba: queda lo del celular con el número y las marcas del servidor.
+        x.num = s.num; x.servido = x.servido || s.servido; x.cobrado = x.cobrado || s.cobrado; x.cancelado = x.cobrado ? null : x.cancelado || s.cancelado;
+        lista.push(x);
+      } else {
+        var y = Object.assign({}, s); y._k = filaClave(y); lista.push(y);
+      }
+    });
+    filaTodos().forEach(function (x) { if (!vistos[x.id] && x.turno === r.turno) lista.push(x); }); // aún no llegan al servidor
+    FBASE = base;
+    PED = lista.filter(function (x) { return !filaTerminado(x); });
+    FH = FH.filter(function (x) { return !x.id; }).concat(lista.filter(filaTerminado));
+    guardarLocal('gp_pedidos', PED); guardarLocal('gp_fila_hist', FH); guardarLocal('gp_fila_base', FBASE);
+    var z = activo ? lista.filter(function (x) { return x.id === activo; })[0] : null;
+    if (activo && (!z || z.cobrado || z.cancelado)) {
+      soltarCarrito(); pintarCarrito();
+      aviso(z ? nombrePedido(z) + (z.cobrado ? ' ya lo cobró ' + primerNombre(z.cobrado.quien || 'otro celular') : ' lo cancelaron en otro celular') : 'El pedido ya no está en la fila', 'error', 7000);
+    }
+    if (r.avisos && r.avisos.length) aviso(r.avisos.map(function (a) { return a.texto; }).join(' '), 'error', 9000);
+    if (JSON.stringify(PED.map(filaClave)) + FH.length !== antes) {
+      pintarEstadoCaja();
+      if (OP.tab === 'fila') repintarOp(); else if (OP.tab === 'vender') pintarPorCobrar();
+    }
+    if (lista.some(function (x) { return FBASE[x.id] !== filaClave(x); })) programarFila();
+  }
+  setInterval(function () { if (!document.hidden) sincFila(); }, 10000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) sincFila(); });
+  window.addEventListener('online', function () { sincFila(); });
 
   /** Resumen del turno para el cierre: pedidos tomados, cobrados, cancelados y espera promedio. */
   function filaResumen() {
@@ -1690,6 +1764,8 @@
       var srv = OP.srv || { turno: null, ventas: [], gastos: [] };
       if (tipo === 'abrir' && r.turno) {
         resto.forEach(function (y) { if (y.turno === x.id) y.turno = r.turno.id; });
+        filaTodos().forEach(function (y) { if (y.turno === x.id) y.turno = r.turno.id; });
+        guardarLocal('gp_pedidos', PED); guardarLocal('gp_fila_hist', FH);
         OP.srv = { turno: r.turno, ventas: r.ventas || [], gastos: r.gastos || [] };
       } else if (tipo === 'venta' && r.turno && srv.turno && srv.turno.id === r.turno.id) {
         srv.turno = r.turno;
