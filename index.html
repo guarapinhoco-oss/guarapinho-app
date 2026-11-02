@@ -2035,7 +2035,7 @@
       mas('Más ingresos de efectivo', e.entradas) + mas('Más retiros de la cuenta a efectivo', e.retiros) +
       menos('Menos pagos y gastos pagados con efectivo guardado', e.pagos) + menos('Menos salidas registradas', e.salidas) +
       fila('Guardado fuera de caja', pesos(e.guardado)) + (e.caja ? fila('En la caja abierta' + (e.propinasCaja ? ' (sin propinas)' : ''), pesos(e.caja)) : '') + fila('Total que debe haber', pesos(e.total), 'total');
-    var nota = pr ? 'Las propinas no son del negocio: no cuentan en Efectivo, Transferencias ni Liquidez. Las de efectivo se separan al cerrar la caja. Las que llegan por transferencia, cuando las saques a la bolsa, regístralo en Transferencias como "Propinas a la bolsa". Cuando se las entregues a los operadores, regístralo aquí.' :
+    var nota = pr ? 'Las propinas no son del negocio: no cuentan en Efectivo, Transferencias ni Liquidez. Las de efectivo se separan al cerrar la caja. Las que llegan por transferencia se pasan a la bolsa con el botón de abajo. Cuando se las entregues a los operadores, regístralo aquí.' :
       tr ? 'Las ventas por transferencia entran solas. Los pagos a proveedores y gastos fijos marcados "Pagado con: Transferencia" se descuentan solos. Registra aquí lo demás: retiros a efectivo, propinas que pasas a la bolsa, pagos a Miguel, repartos.' :
       'Los gastos pagados con plata de la caja ya están descontados en cada cierre, y los pagos marcados "Pagado con: Efectivo guardado" se descuentan solos. Las propinas se separan en la bolsa. Registra aquí lo demás: consignaciones, pagos a Miguel, repartos, o "Pasar a propinas" si una propina quedó como sobrante.';
     var titulo = pr ? 'Propinas guardadas' : tr ? 'Plata en transferencias' : 'Efectivo que debe haber';
@@ -2053,6 +2053,10 @@
           (x.cuenta === (tr ? 'TRANSFERENCIA' : 'EFECTIVO')) ? (x.tipo === 'SALIDA' ? 'sale' : 'entra') : 'entra';
         return '<div class="item"><div class="d"><b>' + esc(x.motivo) + '</b><span>' + fechaCorta(x.fecha).slice(0, 5) + ' ' + esc(x.hora) + ' · ' + esc(x.usuario) + (x.descripcion ? ' · ' + esc(x.descripcion) : '') + '</span></div><div class="v ' + (aqui === 'sale' ? 'neg' : 'pos') + '">' + (aqui === 'sale' ? '−' : '+') + pesos(x.valor) + '</div></div>';
       }).join('') + '</div>' : '') +
+      (admin && pr ? '<h3>Pasar propina de transferencia a la bolsa</h3>' +
+        '<div class="grid2"><div><label>Valor</label><input id="pVal" inputmode="numeric" value="' + (e.enCuenta > 0 ? e.enCuenta : '') + '"></div>' +
+        '<div><label>Billetes salen de</label><select id="pDe"><option value="EF">Efectivo negocio</option><option value="BANCO">Retiro del banco</option></select></div></div>' +
+        '<p class="gris peq" id="pAyuda"></p><div class="acciones"><button id="pPasar">Pasar a la bolsa</button></div>' : '') +
       (admin ? '<h3>' + (pr ? 'Entregar propinas' : 'Registrar movimiento') + '</h3>' +
         (pr ? '' : '<div class="medios" id="eTipo"><button data-t="SALIDA" class="sel">' + (tr ? 'Sale de la cuenta' : 'Sale efectivo') + '</button><button data-t="ENTRADA">' + (tr ? 'Entra a la cuenta' : 'Entra efectivo') + '</button></div>') +
         '<label>Motivo</label><select id="eMot">' + e.motivos.map(function (x) { return '<option>' + esc(x) + '</option>'; }).join('') + '</select>' +
@@ -2062,11 +2066,42 @@
     if (!admin) return;
     var tipo = 'SALIDA';
     campoPesos(m.querySelector('#eVal'));
+    if (pr) pasarPropinaBolsa(m);
     $$('#eTipo button', m).forEach(function (b) { b.onclick = function () { tipo = b.getAttribute('data-t'); $$('#eTipo button', m).forEach(function (y) { y.classList.toggle('sel', y === b); }); m.querySelector('#eMot').value = tipo === 'ENTRADA' ? (tr ? 'Ingreso a la cuenta' : 'Ingreso de efectivo') : (tr ? 'Retiro a efectivo' : 'Consignación al banco'); }; });
     m.querySelector('#eGuardar').onclick = function () {
       var x = { cuenta: pr ? 'PROPINAS' : tr ? 'TRANSFERENCIA' : 'EFECTIVO', tipo: tipo, motivo: m.querySelector('#eMot').value, descripcion: m.querySelector('#eDes').value.trim(), valor: numeroDe(m.querySelector('#eVal').value) };
       if (!(x.valor > 0)) { aviso('Escribe el valor', 'error'); return; }
       api('adminMovimientoEfectivo', x).then(function () { m.cerrar(); aviso('Movimiento registrado', 'exito'); vInicio(); }).catch(function (er) { aviso(er.message, 'error'); });
+    };
+  }
+
+  /**
+   * Propina que llegó por transferencia → bolsa, en un solo paso.
+   * Con billetes del efectivo del negocio son dos movimientos: TR "Propinas a la bolsa" (la propina pasa a la bolsa)
+   * y EF "Consignación al banco" (el negocio cambia ese efectivo por la plata que se quedó en el banco).
+   * Con un retiro real del banco basta el primero.
+   */
+  function pasarPropinaBolsa(m) {
+    var val = m.querySelector('#pVal'), de = m.querySelector('#pDe'), ayuda = m.querySelector('#pAyuda');
+    campoPesos(val);
+    var explicar = function () {
+      ayuda.textContent = de.value === 'EF' ?
+        'Saca ese valor del efectivo del negocio y mételo en la bolsa. La app registra la propina en la bolsa y pasa ese efectivo a Transferencias, porque la plata se quedó en el banco.' :
+        'Úsalo solo si sacaste esa plata del banco (cajero o retiro). La app registra la propina en la bolsa y la descuenta del banco.';
+    };
+    de.onchange = explicar; explicar();
+    m.querySelector('#pPasar').onclick = function () {
+      var v = numeroDe(val.value), btn = this;
+      if (!(v > 0)) { aviso('Escribe el valor', 'error'); return; }
+      btn.disabled = true;
+      api('adminMovimientoEfectivo', { cuenta: 'TRANSFERENCIA', tipo: 'SALIDA', motivo: 'Propinas a la bolsa', descripcion: 'Propina de transferencia a la bolsa', valor: v })
+        .then(function () {
+          if (de.value !== 'EF') return;
+          return api('adminMovimientoEfectivo', { cuenta: 'EFECTIVO', tipo: 'SALIDA', motivo: 'Consignación al banco', descripcion: 'Cambio por propina de transferencia', valor: v })
+            .catch(function (er) { throw new Error('La propina quedó en la bolsa, pero falta el cambio de efectivo: registra en Efectivo una salida "Consignación al banco" de ' + pesos(v) + '. (' + er.message + ')'); });
+        })
+        .then(function () { m.cerrar(); aviso('Propina pasada a la bolsa', 'exito'); vInicio(); })
+        .catch(function (er) { btn.disabled = false; aviso(er.message, 'error'); });
     };
   }
 
