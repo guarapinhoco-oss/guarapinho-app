@@ -2475,12 +2475,15 @@
       '<p class="gris peq">Los días de licencia no se pagan y no cuentan como falta. Si no sabes cuándo regresa, deja vacío el último día y lo escribes cuando vuelva.</p>' +
       '<div class="grid2"><div><label>Primer día sin trabajar</label><input type="date" id="lD" value="' + esc(l ? l.desde : sumarDias(AD.hoy, 1)) + '"></div>' +
       '<div><label>Último día de licencia</label><input type="date" id="lH" value="' + esc(l ? l.hasta : '') + '"></div></div>' +
+      '<label class="peq" style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="lSin" style="width:auto"' + (l && !l.hasta ? ' checked' : '') + '> Todavía no sabemos cuándo regresa (sin último día)</label>' +
       (l && !l.hasta ? '<p class="gris peq">Si ya regresó, escribe como último día el anterior a su regreso.</p>' : '') +
       '<div class="acciones">' + (nueva ? '' : '<button class="sec" id="lQ">Quitar licencia</button>') + '<button id="lG">Guardar</button></div>');
     var enviar = function (x) {
       api('adminLicencia', Object.assign({ usuario: emp.usuario, indice: nueva ? '' : i }, x)).then(function () { m.cerrar(); aviso('Licencia guardada', 'exito'); vHoras(); }).catch(function (e) { aviso(e.message, 'error'); });
     };
-    m.querySelector('#lG').onclick = function () { enviar({ desde: m.querySelector('#lD').value, hasta: m.querySelector('#lH').value }); };
+    var sin = m.querySelector('#lSin'), lH = m.querySelector('#lH'), verSin = function () { lH.disabled = sin.checked; if (sin.checked) lH.value = ''; };
+    sin.onchange = verSin; verSin();
+    m.querySelector('#lG').onclick = function () { enviar({ desde: m.querySelector('#lD').value, hasta: sin.checked ? '' : lH.value }); };
     if (m.querySelector('#lQ')) m.querySelector('#lQ').onclick = function () {
       confirmar('Quitar licencia', 'Esos días vuelven a contar como trabajados o como falta si no marcó.', 'Quitar').then(function (si) { if (si) enviar({ quitar: true }); });
     };
