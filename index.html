@@ -2376,7 +2376,7 @@
     api('adminHoras', f.desde, f.hasta, AD.hEmp || '').then(function (r) {
       AD.horas = r;
       var emp = r.empleados.filter(function (e) { return e.usuario === r.usuario; })[0] || { usuario: '', nombre: 'Operador' };
-      var sd = r.sueldo, v = r.valorHora, desc = r.descuentos || 0, neto = (sd ? sd.valor : 0) + r.valor - desc;
+      var sd = r.sueldo, v = r.valorHora, desc = r.descuentos || 0, neto = (sd ? sd.valor : 0) + r.valor - desc, pagado = (r.pagos || []).reduce(function (t, x) { return t + x.valor; }, 0), falta = neto - pagado;
       var faltan = r.dias.filter(function (d) { return d.falta; }).length, nFaltas = r.nFaltas || 0, nDesc = r.nDescansos || 0, admin = SES.rol === 'ADMIN';
       var CHIP = { verificada: '<span class="chip">Verificada</span>', aprobada: '<span class="chip azul">Aprobada</span>', 'por aprobar': '<span class="chip rojo">Por aprobar</span>' };
       var lics = r.licencias || [];
@@ -2398,7 +2398,7 @@
         '<div><label>Desde</label><input type="date" id="hDesde" value="' + esc(r.desde) + '"></div><div><label>Hasta</label><input type="date" id="hHasta" value="' + esc(r.hasta) + '"></div><div style="flex:0 0 auto"><button class="sec" id="hVer">Ver</button></div>' +
         '<div style="flex:0 0 auto"><button class="amarillo" id="hNuevo">' + ICON.mas + ' Corregir un día</button></div>' +
         (admin && r.valorDia ? '<div style="flex:0 0 auto"><button class="sec" id="hLic">Licencia sin sueldo</button></div>' : '') + '</div>' +
-        '<div class="kpis">' + (r.valorDia ? kpi('A pagar', (neto < 0 ? '−' : '') + pesos(Math.abs(neto)), fechaCorta(r.desde) + ' al ' + fechaCorta(r.hasta) + ': sueldo + extras − descuentos', 'destacado') +
+        '<div class="kpis">' + (r.valorDia ? kpi(pagado ? 'Falta por pagar' : 'A pagar', (falta < 0 ? '−' : '') + pesos(Math.abs(falta)), fechaCorta(r.desde) + ' al ' + fechaCorta(r.hasta) + ': sueldo + extras − descuentos' + (pagado ? ' = ' + pesos(neto) + ' · ya pagado ' + pesos(pagado) + ' (' + r.pagos.map(function (x) { return fechaCorta(x.fecha).slice(0, 5) + ' ' + pesos(x.valor); }).join(', ') + ')' : ''), 'destacado') +
           kpi('Sueldo', pesos(sd ? sd.valor : 0), sd ? (sd.licencia || sd.antesIngreso ? sd.dias + ' día' + (sd.dias === 1 ? '' : 's') + ' a ' + pesos(r.valorDia) + [sd.licencia ? sd.licencia + ' de licencia' : '', sd.antesIngreso ? sd.antesIngreso + ' antes de entrar' : ''].filter(String).map(function (t) { return ' · ' + t; }).join('') : 'Medio sueldo de ' + pesos(r.sueldoMes)) : '') +
           kpi('Horas extra a pagar', pesos(r.valor), horasMin(r.minutos) + ' después del cruce') +
           kpi('Descuentos', (desc ? '−' : '') + pesos(desc), [nFaltas ? nFaltas + ' falta' + (nFaltas === 1 ? '' : 's') : '', nDesc ? nDesc + ' descanso' + (nDesc === 1 ? '' : 's') + ' sin pago' : '', r.minutosFalta ? horasMin(r.minutosFalta) + ' sin trabajar' : ''].filter(String).join(' · ') || 'Sin faltas', desc ? 'negativo' : '')
