@@ -2377,7 +2377,7 @@
       AD.horas = r;
       var emp = r.empleados.filter(function (e) { return e.usuario === r.usuario; })[0] || { usuario: '', nombre: 'Operador' };
       var sd = r.sueldo, v = r.valorHora, desc = r.descuentos || 0, neto = (sd ? sd.valor : 0) + r.valor - desc;
-      var faltan = r.dias.filter(function (d) { return d.falta; }).length, nFaltas = r.nFaltas || 0, admin = SES.rol === 'ADMIN';
+      var faltan = r.dias.filter(function (d) { return d.falta; }).length, nFaltas = r.nFaltas || 0, nDesc = r.nDescansos || 0, admin = SES.rol === 'ADMIN';
       var CHIP = { verificada: '<span class="chip">Verificada</span>', aprobada: '<span class="chip azul">Aprobada</span>', 'por aprobar': '<span class="chip rojo">Por aprobar</span>' };
       var lics = r.licencias || [];
       $('vista').innerHTML =
@@ -2390,7 +2390,7 @@
             (admin ? '<button class="peq sec" data-lic="' + i + '">' + (l.hasta ? 'Cambiar' : 'Ya regresó') + '</button>' : '') + '</div>';
         }).join('') +
         '<p class="gris peq"' + (r.empleados.length > 1 || lics.length ? '' : ' style="margin-top:-6px"') + '>' + esc(emp.nombre) + ' marca entrada y salida en su app. Horario pactado ' + esc(r.horario.entrada) + ' a ' + esc(r.horario.salida) + ': lo que marque antes o después es hora extra (en bloques de 15 minutos). Valor por hora: diurna ' + pesos(v.diurna) + ', nocturna (desde las 7 p. m.) ' + pesos(v.nocturna) + '; domingo ' + pesos(v.diurnaDominical) + ' y ' + pesos(v.nocturnaDominical) + '.</p>' +
-        (r.valorDia ? '<p class="gris peq">Lo que llegue tarde o salga antes se cruza hora por hora con las extras del mismo día; si falta más de lo que sobra, se descuenta a ' + pesos(r.horaOrdinaria) + ' la hora. Un día que se abrió caja y no marcó nada es <b>falta</b> y se descuenta ' + pesos(r.valorDia) + ' (un día de sueldo), salvo que lo marques como permiso.</p>' : '') +
+        (r.valorDia ? '<p class="gris peq">Lo que llegue tarde o salga antes se cruza hora por hora con las extras del mismo día; si falta más de lo que sobra, se descuenta a ' + pesos(r.horaOrdinaria) + ' la hora. Un día que se abrió caja y no marcó nada es <b>falta</b> y se descuenta ' + pesos(r.valorDia) + ' (un día de sueldo), salvo que lo marques como permiso. Si en una semana falta sin justa causa, tampoco se le paga el día de descanso de esa semana (art. 173 del Código Sustantivo del Trabajo); si la falta tuvo justa causa (incapacidad, calamidad), márcala como permiso.</p>' : '') +
         '<p class="gris peq">Cada marca se verifica sola: se guarda con la hora del servidor (no la del celular) y con el GPS, que debe estar a menos de ' + r.radioM + ' m del punto. Si una marca se hizo sin señal, sin GPS o lejos del punto, las extras de ese día quedan <b>por aprobar</b> y no se pagan hasta que las apruebes.</p>' +
         (r.punto ? '<p class="gris peq">Ubicación del punto fijada el ' + esc(r.punto.fecha) + ' por ' + esc(r.punto.por) + '.' + (admin ? ' <a href="#" id="hPunto">Volver a fijarla</a>' : '') + '</p>'
           : '<div class="alerta" id="hPuntoA">Falta fijar la ubicación del punto: sin ella ninguna marca queda verificada.' + (admin ? ' Párate en el punto y toca aquí.' : ' Debe hacerlo un administrador desde el punto.') + '</div>') +
@@ -2401,15 +2401,15 @@
         '<div class="kpis">' + (r.valorDia ? kpi('A pagar', (neto < 0 ? '−' : '') + pesos(Math.abs(neto)), fechaCorta(r.desde) + ' al ' + fechaCorta(r.hasta) + ': sueldo + extras − descuentos', 'destacado') +
           kpi('Sueldo', pesos(sd ? sd.valor : 0), sd ? (sd.licencia || sd.antesIngreso ? sd.dias + ' día' + (sd.dias === 1 ? '' : 's') + ' a ' + pesos(r.valorDia) + [sd.licencia ? sd.licencia + ' de licencia' : '', sd.antesIngreso ? sd.antesIngreso + ' antes de entrar' : ''].filter(String).map(function (t) { return ' · ' + t; }).join('') : 'Medio sueldo de ' + pesos(r.sueldoMes)) : '') +
           kpi('Horas extra a pagar', pesos(r.valor), horasMin(r.minutos) + ' después del cruce') +
-          kpi('Descuentos', (desc ? '−' : '') + pesos(desc), [nFaltas ? nFaltas + ' falta' + (nFaltas === 1 ? '' : 's') : '', r.minutosFalta ? horasMin(r.minutosFalta) + ' sin trabajar' : ''].filter(String).join(' · ') || 'Sin faltas', desc ? 'negativo' : '')
+          kpi('Descuentos', (desc ? '−' : '') + pesos(desc), [nFaltas ? nFaltas + ' falta' + (nFaltas === 1 ? '' : 's') : '', nDesc ? nDesc + ' descanso' + (nDesc === 1 ? '' : 's') + ' sin pago' : '', r.minutosFalta ? horasMin(r.minutosFalta) + ' sin trabajar' : ''].filter(String).join(' · ') || 'Sin faltas', desc ? 'negativo' : '')
           : kpi('Horas extra a pagar', pesos(r.valor), fechaCorta(r.desde) + ' al ' + fechaCorta(r.hasta), 'destacado') + kpi('Horas extra', horasMin(r.minutos), r.dias.length + ' día' + (r.dias.length === 1 ? '' : 's') + ' marcados')) +
         kpi('Por aprobar', pesos(r.porAprobar), r.nPorAprobar ? r.nPorAprobar + ' día' + (r.nPorAprobar === 1 ? '' : 's') + ' sin verificar' : 'Nada pendiente', r.nPorAprobar ? 'negativo' : '') +
         kpi('Marcas incompletas', String(faltan), faltan ? 'Corrígelas para que cuenten' : 'Todo completo', faltan ? 'negativo' : '') + '</div>' +
         (r.dias.length ? '<div class="tabla-scroll"><table><thead><tr><th>Día</th><th>Entrada</th><th>Salida</th><th class="n">Extra diurna</th><th class="n">Extra nocturna</th><th class="n">Valor</th><th>Verificación</th><th>Caja</th><th>Nota</th></tr></thead><tbody>' + r.dias.map(function (d, i) {
           var c = d.caja;
           var dia = '<tr class="clic" data-h="' + i + '"><td>' + diaSemana(d.fecha) + ' ' + fechaCorta(d.fecha).slice(0, 5) + (d.domingo ? ' <span class="chip">domingo</span>' : '') + '</td>';
-          if (d.ausencia) return dia + '<td colspan="2">' + (d.ausencia === 'FALTA' ? '<span class="chip rojo">Faltó</span>' : d.ausencia === 'LICENCIA' ? '<span class="chip">Licencia</span>' : '<span class="chip azul">Permiso</span>') + '</td><td class="n">0:00</td><td class="n">0:00</td>' +
-            '<td class="n">' + (d.descuento ? '<span style="color:var(--rojo)">−' + pesos(d.descuento) + '</span>' : pesos(0)) + '</td><td class="peq">' + (d.ausencia === 'LICENCIA' ? 'No se paga' : d.auto ? 'Sin marcas con caja abierta' : d.ausencia === 'FALTA' ? 'Se descuenta un día' : 'No se descuenta') + '</td>' +
+          if (d.ausencia) return dia + '<td colspan="2">' + (d.ausencia === 'FALTA' ? '<span class="chip rojo">Faltó</span>' : d.ausencia === 'DESCANSO' ? '<span class="chip rojo">Descanso sin pago</span>' : d.ausencia === 'LICENCIA' ? '<span class="chip">Licencia</span>' : '<span class="chip azul">Permiso</span>') + '</td><td class="n">0:00</td><td class="n">0:00</td>' +
+            '<td class="n">' + (d.descuento ? '<span style="color:var(--rojo)">−' + pesos(d.descuento) + '</span>' : pesos(0)) + '</td><td class="peq">' + (d.ausencia === 'LICENCIA' ? 'No se paga' : d.ausencia === 'DESCANSO' ? 'Faltó sin justa causa esa semana' : d.auto ? 'Sin marcas con caja abierta' : d.ausencia === 'FALTA' ? 'Se descuenta un día' : 'No se descuenta') + '</td>' +
             '<td class="peq">' + (c ? (c.apertura ? 'Abrió ' + esc(c.apertura) : '') + (c.cierre ? (c.apertura ? ' · ' : '') + 'cerró ' + esc(horaTurno(c.cierre)) : '') : '<span class="gris">—</span>') + '</td>' +
             '<td class="peq">' + esc(d.nota) + (d.editadoPor ? ' <span class="gris">(corrigió ' + esc(d.editadoPor) + ')</span>' : '') + '</td></tr>';
           var cruce = (d.cruce ? '<div class="gris peq">Cruce ' + horasMin(d.cruce) + '</div>' : '') + (d.faltaMin ? '<div class="peq" style="color:var(--rojo)">Faltaron ' + horasMin(d.faltaMin) + '</div>' : '');
@@ -2451,9 +2451,10 @@
     if (d.ausencia) {
       var ma = modal(diaSemana(d.fecha) + ' ' + fechaCorta(d.fecha),
         (d.ausencia === 'LICENCIA' ? '<p><b>Licencia sin sueldo</b> · este día no se paga.</p><p class="gris peq">Si sí vino a trabajar, corrige el día con su entrada y salida y se le paga.</p>' :
+        d.ausencia === 'DESCANSO' ? '<p><b>Descanso sin pago</b> · se descuentan ' + pesos(d.descuento) + ' (un día de sueldo).</p><p class="gris peq">Esa semana faltó sin justa causa, y por ley el descanso solo se paga si cumplió los días de la semana. Si la falta tuvo justa causa (incapacidad, calamidad), corrige ese día y márcalo como permiso: el descanso vuelve a pagarse.</p>' :
         '<p><b>' + (d.ausencia === 'FALTA' ? 'Faltó' : 'Permiso') + '</b> · ' + (d.descuento ? 'se descuentan ' + pesos(d.descuento) + ' (un día de sueldo)' : 'no se descuenta') + '</p>') +
-        (d.auto && d.ausencia !== 'LICENCIA' ? '<p class="gris peq">No hay ninguna marca y ese día se abrió caja' + (c && c.apertura ? ' (abrió ' + esc(c.apertura) + ')' : '') + '. Si sí vino, corrige el día con su entrada y salida; si tenía permiso, márcalo como permiso.</p>' : '') +
-        (admin ? '<div class="acciones"><button class="sec" id="hC">Corregir</button></div>' : ''));
+        (d.auto && d.ausencia !== 'LICENCIA' && d.ausencia !== 'DESCANSO' ? '<p class="gris peq">No hay ninguna marca y ese día se abrió caja' + (c && c.apertura ? ' (abrió ' + esc(c.apertura) + ')' : '') + '. Si sí vino, corrige el día con su entrada y salida; si tenía permiso, márcalo como permiso.</p>' : '') +
+        (admin && d.ausencia !== 'DESCANSO' ? '<div class="acciones"><button class="sec" id="hC">Corregir</button></div>' : ''));
       if (ma.querySelector('#hC')) ma.querySelector('#hC').onclick = function () { ma.cerrar(); formHoras(emp, d); };
       return;
     }
