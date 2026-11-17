@@ -2645,6 +2645,19 @@
   function vResultados() {
     api('adminResultados').then(function (r) { AD.resultados = r; pintarResultados(); }).catch(fallaVista);
   }
+  /** Cuotas del préstamo de Miguel con lo pagado (salidas "Pago a Miguel (préstamo)") y el saldo que se le debe. */
+  function tablaPrestamo(pr) {
+    if (!pr || !pr.cuotas) return '';
+    var filas = pr.cuotas.map(function (c, i) {
+      var completa = c.pagado >= c.valor, parcial = c.pagado > 0 && !completa;
+      var estado = completa ? '<span style="color:var(--verde);font-weight:800">Pagada' + (c.fecha ? ' el ' + esc(fechaLarga(c.fecha)) : '') + '</span>'
+        : parcial ? '<span style="font-weight:800">Abonado ' + pesos(c.pagado) + '</span>' : '<span class="gris">Pendiente</span>';
+      return '<tr><td>Cuota ' + (i + 1) + ' · ' + nombreMes(c.mes) + '</td><td class="n">' + pesos(c.valor) + '</td><td class="n">' + estado + '</td></tr>';
+    }).join('');
+    return '<div class="tabla-scroll" style="margin-top:12px"><table><thead><tr><th>Cuota</th><th class="n">Valor</th><th class="n">Estado</th></tr></thead><tbody>' + filas + '</tbody></table></div>' +
+      '<div class="cuadre" style="box-shadow:none;padding:0;margin-top:8px"><div class="l"><span>Pagado a Miguel</span><span class="num">' + pesos(pr.pagado) + '</span></div>' +
+      '<div class="l total"><span>Saldo que se le debe</span><span class="num">' + pesos(pr.saldo) + '</span></div></div>';
+  }
   function pintarResultados() {
     var r = AD.resultados;
     var sel = AD.mesSel || (r.meses.filter(function (m) { return m.mes === r.mesHoy; })[0] || r.meses[r.meses.length - 1] || {}).num;
@@ -2664,7 +2677,8 @@
       '<div class="l total"><span>Caja neta del mes</span><span class="num ' + (m.cajaNeta < 0 ? 'neg' : '') + '">' + pesos(m.cajaNeta) + '</span></div>' +
       '<div class="l"><span>Caja acumulada</span><span class="num ' + (m.cajaAcumulada < 0 ? 'neg' : '') + '">' + pesos(m.cajaAcumulada) + '</span></div></div></div>' +
       '<div class="tarjeta"><h2>Préstamo de Miguel</h2><div class="grid2"><div><label>Capital prestado</label><input id="rCap" value="' + r.capital.capital + '"></div><div><label>Número de cuotas (meses)</label><input id="rCuo" inputmode="numeric" value="' + r.capital.cuotas + '"></div></div>' +
-      '<p class="gris peq">Cuota mensual: ' + pesos(r.capital.cuotas ? r.capital.capital / r.capital.cuotas : 0) + '. Periodo de este mes: <b>' + esc(m.periodo) + '</b>.</p><button class="sec" id="rGuardarCap">Guardar préstamo</button></div></div>' +
+      tablaPrestamo(r.prestamo) +
+      '<p class="gris peq">Periodo de este mes: <b>' + esc(m.periodo) + '</b>.</p><button class="sec" id="rGuardarCap">Guardar préstamo</button></div></div>' +
       '<h3>Reparto entre socios · mes ' + m.num + '</h3><p class="gris peq" style="margin-top:-4px">Cláusula Quinta: si un socio no cumplió, pierde 10 puntos que se reparten entre los otros tres.</p><div class="socios">' + m.socios.map(function (s, i) {
         return '<div class="socio"><div class="nombre">' + esc(s.nombre) + '</div><b class="num">' + pesos(s.monto) + '</b><span class="gris peq">' + pct(s.pct) + ' de la utilidad</span><br>' +
           '<div class="interruptor" data-socio="' + i + '"><button class="si ' + (s.cumplio !== 'No' ? 'sel' : '') + '" data-v="Sí">Cumplió</button><button class="no ' + (s.cumplio === 'No' ? 'sel' : '') + '" data-v="No">No cumplió</button></div></div>';
